@@ -1,20 +1,34 @@
-.. BigchainDB documentation master file, created by
-   sphinx-quickstart on Mon Feb  8 14:13:36 2016.
-   You can adapt this file completely to your liking, but it should at least
+.. You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to BigchainDB's documentation!
-======================================
+BigchainDB Documentation
+========================
 
-Contents:
+Table of Contents
+-----------------
+
+Note to reviewers of this documentation: For now, *all* documentation files (.rst and .md) are  at the same level in the Table of Contents heirarchy. Later, we can organize them into a more sensible heirarchy.
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 5
+   :numbered:
 
-   test
+   installing
+   getting-started
+   admin
+   contributing
+   faq
+   release-notes
+   software-architecture
+   the-bigchain-class
+   cryptography
+   models
+   json-serialization
+   transaction-validation
+   rethinkdb-benchmarks
 
 
-Indices and tables
+Indices and Tables
 ==================
 
 * :ref:`genindex`
