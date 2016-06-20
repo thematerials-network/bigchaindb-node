@@ -7,10 +7,10 @@ Appendices
 .. toctree::
    :maxdepth: 1
 
-   glossary
    json-serialization
    cryptography
    the-Bigchain-class
    consensus
+   ntp-notes
    local-rethinkdb-cluster
    licenses
