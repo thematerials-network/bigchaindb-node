@@ -11,4 +11,3 @@ BigchainDB Nodes
    node-requirements
    setup-run-node
    run-with-docker
-   running-unit-tests
