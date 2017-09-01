@@ -3,12 +3,11 @@
 
 Build blockchain applications in Python for Tendermint.
 
-Passes the ABCI compatibility [test](https://github.com/tendermint/abci/blob/master/tests/test_app/main.go)
-
 ### Install
 Requires Python 3.6
 
-Recommend [PipEnv](http://docs.pipenv.org/en/latest/) for a virtualenv but not required
+Recommend [PipEnv](http://docs.pipenv.org/en/latest/) for a virtualenv *but not required*
+
 ```
 git clone https://github.com/davebryson/py-abci
 cd py-abci
@@ -16,110 +15,94 @@ pipenv --three # for a python 3 virtualenv
 pipenv install
 ```
 
+Or run `python setup.py` locally  (proper PIP todo...)
+
 ### Create an Application
-Simple example:
+Example of a simple global counting app.
 
-counter.py
+examples/counter.py
 ```python
-
-import gevent
-import signal
-from gevent.event import Event
-
 import struct
-import abci.types_pb2 as types
-from abci.server import ABCIServer
-from abci.application import BaseApplication, Result
+import abci.utils as util
+
+from abci import (
+    ABCIServer,
+    BaseApplication,
+    BaseApplication,
+    ResponseInfo,
+    ResponseQuery,
+    Result
+)
+
+# Tx encoding/decoding
+def encode_number(value):
+    return struct.pack('>I', value)
+
+def decode_number(raw):
+    return int.from_bytes(raw, byteorder='big')
 
 class SimpleCounter(BaseApplication):
-    def __init__(self):
-        self.hashCount = 0
-        self.txCount = 0
-        self.serial = False
+    """Simple counting app.  It only excepts values sent to it in order.  The
+    state maintains the current count. For example if starting at state 0, sending:
+    -> 0x01 = ok
+    -> 0x03 = fail (expects 2)
+
+    To run it:
+    - make a clean new directory for tendermint
+    - start this server: python counter.py
+    - start tendermint: tendermint --home "YOUR DIR HERE" node
+    - The send transactions to the app:
+    curl http://localhost:46657/broadcast_tx_commit?tx=0x01
+    curl http://localhost:46657/broadcast_tx_commit?tx=0x02
+    ...
+    to see the latest count:
+    curl http://localhost:46657/abci_query
+
+    The way the app state is structured, you can also see the current state value
+    in the tendermint console output."""
 
     def info(self):
-        r = types.ResponseInfo()
-        r.data = '# hashes: {} # txs: {}'.format(self.hashCount, self.txCount)
-        r.version = '2.0'
+        r = ResponseInfo()
+        r.last_block_height = 0
+        r.last_block_app_hash = b''
         return r
 
-    def set_option(self, key, value):
-        return 'key: {} value: {}'.format(k,v)
+    def init_chain(self, v):
+        """Set initial state on first run"""
+        self.txCount = 0
 
-    def deliver_tx(self, tx):
-        self.txCount += 1
-        return Result.ok(log='added tx')
+    def __valid_input(self, tx):
+        """Check to see the given input is the next sequence in the count"""
+        value = decode_number(tx)
+        return value == (self.txCount + 1)
 
     def check_tx(self, tx):
-        if tx == b'':
-            return Result.error(code=types.EncodingError, log='bad input empty tx')
+        """ Validate the Tx before entry into the mempool """
+        if not self.__valid_input(tx):
+            return Result.error(log='bad count')
+
         return Result.ok(log='thumbs up')
 
-    def commit(self):
-        self.hashCount += 1
-        if self.txCount == 0:
-            return Result.ok(data='')
-        h = struct.pack('>Q', self.txCount)
-        return Result.ok(data=str(h))
+    def deliver_tx(self, tx):
+        """ Mutate state if valid Tx """
+        if not self.__valid_input(tx):
+            return Result.error(log='bad count')
 
+        self.txCount += 1
+        return Result.ok()
+
+    def query(self, reqQuery):
+        """Return the last tx count"""
+        v = encode_number(self.txCount)
+        rq = ResponseQuery(code=0, key=b'count', value=v)
+        return rq
+
+    def commit(self):
+        """Return the current encode state value to tendermint"""
+        h = struct.pack('>Q', self.txCount)
+        return Result.ok(data=h)
 
 if __name__ == '__main__':
     app = ABCIServer(app=SimpleCounter())
-    # Fire it up...
-    app.start()
-
-    # wait for interrupt
-    evt = Event()
-    gevent.signal(signal.SIGQUIT, evt.set)
-    gevent.signal(signal.SIGTERM, evt.set)
-    gevent.signal(signal.SIGINT, evt.set)
-    evt.wait()
-
-    app.stop()
+    app.run()
 ```
-
-### Test it with abci-cli
-```
-In one terminal
->> pipenv shell
->> python counter_example.py
- ABCIServer started on port: 46658
-
-In another terminal
->> abci-cli console
->> info
--> data: # hashes: 0 # txs: 0
--> data.hex: 23206861736865733A20302023207478733A2030
-
->> check_tx "hello
--> log: thumbs up
-
->> deliver_tx "hello"
--> log: added tx
-
->> commit
--> data: b'\x00\x00\x00\x00\x00\x00\x00\x01'
--> data.hex: 62275C7830305C7830305C7830305C7830305C7830305C7830305C7830305C78303127
-```
-
-## Run ABCI compatibility test
- NOTE: Requires golang and ABCI source
-```
-make test
-```
-
-### Use it with Tendermint
-```
-In one terminal
->> pipenv shell
->> python counter.py
- ABCIServer started on port: 46658
-
- In another terminal
- >> tendermint node
-
- In another terminal
- >> curl -s 'localhost:46657/broadcast_tx_commit?tx="0x00"'
- >> curl -s 'localhost:46657/broadcast_tx_commit?tx="0x01"'
- ...
- ```
