@@ -22,8 +22,10 @@ for signing certificates
 (i.e. an internal self-signed certificate authority [CA]),
 then you can skip this step.
 Otherwise, your organization must
-:ref:`set up its own self-signed certificate authority <How to Set Up a Self-Signed Certificate Authority>`.
+:ref:`set up its own self-signed certificate authority <how-to-set-up-a-self-signed-certificate-authority>`.
 
+
+.. _register-a-domain-and-get-an-ssl-certificate-for-it:
 
 2. Register a Domain and Get an SSL Certificate for It
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -34,6 +36,7 @@ should choose an FQDN for their API (e.g. api.organization-x.com),
 register the domain name,
 and buy an SSL/TLS certificate for the FQDN.
 
+.. _things-each-node-operator-must-do:
 
 Things Each Node Operator Must Do
 ---------------------------------
@@ -70,8 +73,8 @@ They should send you:
 
 For help, see the pages:
 
-* :ref:`How to Generate a Server Certificate for MongoDB`
-* :ref:`How to Generate a Client Certificate for MongoDB`
+* :ref:`how-to-generate-a-server-certificate-for-mongodb`
+* :ref:`how-to-generate-a-client-certificate-for-mongodb`
 
 
 ☐ Every node in a BigchainDB cluster needs its own
@@ -124,6 +127,6 @@ allow easier periodic rotation of the ``Agent API Key`` with a constant
 
 ☐ You can now proceed to set up your BigchainDB node based on whether it is the
 :ref:`first node in a new cluster
-<Kubernetes Template: Deploy a Single BigchainDB Node>` or a
+<kubernetes-template-deploy-a-single-node-bigchaindb>` or a
 :ref:`node that will be added to an existing cluster
-<Kubernetes Template: Add a BigchainDB Node to an Existing BigchainDB Cluster>`.
+<kubernetes-template-add-a-bigchaindb-node-to-an-existing-cluster>`.

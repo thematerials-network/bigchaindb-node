@@ -1,3 +1,5 @@
+.. _how-to-configure-a-bigchaindb-node:
+
 How to Configure a BigchainDB Node
 ==================================
 
@@ -9,7 +11,7 @@ and ``secret.yaml`` (a set of Secrets).
 They are stored in the Kubernetes cluster's key-value store (etcd).
 
 Make sure you did all the things listed in the section titled
-:ref:`Things Each Node Operator Must Do`
+:ref:`things-each-node-operator-must-do`
 (including generation of all the SSL certificates needed
 for MongoDB auth).
 
@@ -33,7 +35,7 @@ vars.cluster-fqdn
 ~~~~~~~~~~~~~~~~~
 
 The ``cluster-fqdn`` field specifies the domain you would have
-:ref:`registered before <2. Register a Domain and Get an SSL Certificate for It>`.
+:ref:`registered before <register-a-domain-and-get-an-ssl-certificate-for-it>`.
 
 
 vars.cluster-frontend-port
@@ -139,8 +141,8 @@ listening for HTTP requests. Currently set to ``9984`` by default.
 The ``bigchaindb-ws-port`` is the port number on which BigchainDB is
 listening for Websocket requests. Currently set to ``9985`` by default.
 
-There's another :ref:`page with a complete listing of all the BigchainDB Server
-configuration settings <Configuration Settings>`.
+There's another :doc:`page with a complete listing of all the BigchainDB Server
+configuration settings <../server-reference/configuration>`.
 
 
 bdb-config.bdb-keyring

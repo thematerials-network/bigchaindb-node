@@ -1,3 +1,5 @@
+.. _kubernetes-template-deploy-a-single-node-bigchaindb:
+
 Kubernetes Template: Deploy a Single BigchainDB Node
 ====================================================
 
@@ -105,8 +107,9 @@ That means you can visit the dashboard in your web browser at
 Step 3: Configure Your BigchainDB Node
 --------------------------------------
 
-See the page titled :ref:`How to Configure a BigchainDB Node`.
+See the page titled :ref:`how-to-configure-a-bigchaindb-node`.
 
+.. _start-the-nginx-service:
 
 Step 4: Start the NGINX Service
 -------------------------------
@@ -179,6 +182,8 @@ Step 4.2: NGINX with HTTPS
         $ kubectl --context k8s-bdb-test-cluster-0 apply -f nginx-https/nginx-https-svc.yaml
 
 
+.. _assign-dns-name-to-the-nginx-public-ip:
+
 Step 5: Assign DNS Name to the NGINX Public IP
 ----------------------------------------------
 
@@ -220,6 +225,8 @@ This will ensure that when you scale the replica set later, other MongoDB
 members in the replica set can reach this instance.
 
 
+.. _start-the-mongodb-kubernetes-service:
+
 Step 6: Start the MongoDB Kubernetes Service
 --------------------------------------------
 
@@ -244,6 +251,8 @@ Step 6: Start the MongoDB Kubernetes Service
 
        $ kubectl --context k8s-bdb-test-cluster-0 apply -f mongodb/mongo-svc.yaml
 
+
+.. _start-the-bigchaindb-kubernetes-service:
 
 Step 7: Start the BigchainDB Kubernetes Service
 -----------------------------------------------
@@ -275,6 +284,8 @@ Step 7: Start the BigchainDB Kubernetes Service
        $ kubectl --context k8s-bdb-test-cluster-0 apply -f bigchaindb/bigchaindb-svc.yaml
 
 
+.. _start-the-openresty-kubernetes-service:
+
 Step 8: Start the OpenResty Kubernetes Service
 ----------------------------------------------
 
@@ -294,6 +305,8 @@ Step 8: Start the OpenResty Kubernetes Service
 
        $ kubectl --context k8s-bdb-test-cluster-0 apply -f nginx-openresty/nginx-openresty-svc.yaml
 
+
+.. _start-the-nginx-kubernetes-deployment:
 
 Step 9: Start the NGINX Kubernetes Deployment
 ---------------------------------------------
@@ -384,6 +397,8 @@ Step 9.2: NGINX with HTTPS
         $ kubectl --context k8s-bdb-test-cluster-0 apply -f nginx-https/nginx-https-dep.yaml
 
 
+.. _create-kubernetes-storage-classes-for-mongodb:
+
 Step 10: Create Kubernetes Storage Classes for MongoDB
 ------------------------------------------------------
 
@@ -453,6 +468,8 @@ Create the required storage classes using:
 You can check if it worked using ``kubectl get storageclasses``.
 
 
+.. _create-kubernetes-persistent-volume-claims:
+
 Step 11: Create Kubernetes Persistent Volume Claims
 ---------------------------------------------------
 
@@ -504,7 +521,9 @@ but it should become "Bound" fairly quickly.
         $ kubectl --context k8s-bdb-test-cluster-0 patch pv <pv-name> -p '{"spec":{"persistentVolumeReclaimPolicy":"Retain"}}'
 
     For notes on recreating a private volume form a released Azure disk resource consult
-    :ref:`the page about cluster troubleshooting <Cluster Troubleshooting>`.
+    :ref:`cluster-troubleshooting`.
+
+.. _start-a-kubernetes-statefulset-for-mongodb:
 
 Step 12: Start a Kubernetes StatefulSet for MongoDB
 ---------------------------------------------------
@@ -589,6 +608,7 @@ Step 12: Start a Kubernetes StatefulSet for MongoDB
 
        $ kubectl --context k8s-bdb-test-cluster-0 get pods -w
 
+.. _configure-users-and-access-control-for-mongodb:
 
 Step 13: Configure Users and Access Control for MongoDB
 -------------------------------------------------------
@@ -719,6 +739,8 @@ Step 13: Configure Users and Access Control for MongoDB
                 } )
 
 
+.. _start-a-kubernetes-deployment-for-mongodb-monitoring-agent:
+
 Step 14: Start a Kubernetes Deployment for MongoDB Monitoring Agent
 -------------------------------------------------------------------
 
@@ -745,6 +767,8 @@ Step 14: Start a Kubernetes Deployment for MongoDB Monitoring Agent
 
        $ kubectl --context k8s-bdb-test-cluster-0 apply -f mongodb-monitoring-agent/mongo-mon-dep.yaml
 
+
+.. _start-a-kubernetes-deployment-for-mongodb-backup-agent:
 
 Step 15: Start a Kubernetes Deployment for MongoDB Backup Agent
 ---------------------------------------------------------------
@@ -837,6 +861,8 @@ Step 16: Start a Kubernetes Deployment for BigchainDB
   * You can check its status using the command ``kubectl get deployments -w``
 
 
+.. _start-a-kubernetes-deployment-for-openresty:
+
 Step 17: Start a Kubernetes Deployment for OpenResty
 ----------------------------------------------------
 
@@ -880,10 +906,12 @@ Step 18: Configure the MongoDB Cloud Manager
 --------------------------------------------
 
 Refer to the
-:ref:`documentation <Configure MongoDB Cloud Manager for Monitoring and Backup>`
+:ref:`documentation <configure-mongodb-cloud-manager-for-monitoring-and-backup>`
 for details on how to configure the MongoDB Cloud Manager to enable
 monitoring and backup.
 
+
+.. _verify-the-bigchaindb-node-setup:
 
 Step 19: Verify the BigchainDB Node Setup
 -----------------------------------------
