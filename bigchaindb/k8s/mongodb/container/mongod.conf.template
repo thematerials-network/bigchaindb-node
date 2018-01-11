@@ -25,6 +25,8 @@ systemLog:
       verbosity: 0
     query:
       verbosity: 0
+    replication:
+      verbosity: 0
     sharding:
       verbosity: 0
     storage:
@@ -93,3 +95,7 @@ storage:
 operationProfiling:
   mode: slowOp
   slowOpThresholdMs: 100
+
+replication:
+  replSetName: REPLICA_SET_NAME
+  enableMajorityReadConcern: true
