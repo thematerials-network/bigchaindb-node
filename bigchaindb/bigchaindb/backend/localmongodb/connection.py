@@ -95,14 +95,18 @@ class LocalMongoDBConnection(Connection):
             # use of certificates for TLS connectivity.
             if self.ca_cert is None or self.certfile is None or \
                     self.keyfile is None or self.crlfile is None:
+                credentials = {}
+                if self.login is not None and self.password is not None:
+                    credentials = {'username': self.login,
+                                   'password': self.password,
+                                   'authSource': self.dbname}
                 client = pymongo.MongoClient(self.host,
                                              self.port,
                                              replicaset=self.replicaset,
                                              serverselectiontimeoutms=self.connection_timeout,
                                              ssl=self.ssl,
+                                             **credentials,
                                              **MONGO_OPTS)
-                if self.login is not None and self.password is not None:
-                    client[self.dbname].authenticate(self.login, self.password)
             else:
                 logger.info('Connecting to MongoDB over TLS/SSL...')
                 client = pymongo.MongoClient(self.host,
