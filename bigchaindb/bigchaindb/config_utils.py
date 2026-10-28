@@ -23,7 +23,7 @@ import logging
 import collections.abc
 from functools import lru_cache
 
-from pkg_resources import iter_entry_points, ResolutionError
+from importlib.metadata import entry_points
 
 from bigchaindb.common import exceptions
 
@@ -34,6 +34,12 @@ from bigchaindb.validation import BaseValidationRules
 # TODO: move this to a proper configuration file for logging
 logging.getLogger('requests').setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
+
+
+# Stands in for pkg_resources.ResolutionError, which setuptools >= 81 no longer ships.
+class ResolutionError(Exception):
+    pass
+
 
 CONFIG_DEFAULT_PATH = os.environ.setdefault(
     'BIGCHAINDB_CONFIG_PATH',
@@ -277,7 +283,7 @@ def load_validation_plugin(name=None):
     #       We should probably support Requirements specs in the config, e.g.
     #       validation_plugin: 'my-plugin-package==0.0.1;default'
     plugin = None
-    for entry_point in iter_entry_points('bigchaindb.validation', name):
+    for entry_point in entry_points(group='bigchaindb.validation', name=name):
         plugin = entry_point.load()
 
     # No matching entry_point found
@@ -302,7 +308,7 @@ def load_events_plugins(names=None):
         return plugins
 
     for name in names:
-        for entry_point in iter_entry_points('bigchaindb.events', name):
+        for entry_point in entry_points(group='bigchaindb.events', name=name):
             plugins.append((name, entry_point.load()))
 
     return plugins

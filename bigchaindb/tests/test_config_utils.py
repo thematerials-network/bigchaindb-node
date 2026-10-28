@@ -40,10 +40,9 @@ def test_load_validation_plugin_loads_default_rules_without_name():
 
 
 def test_load_validation_plugin_raises_with_unknown_name():
-    from pkg_resources import ResolutionError
     from bigchaindb import config_utils
 
-    with pytest.raises(ResolutionError):
+    with pytest.raises(config_utils.ResolutionError):
         config_utils.load_validation_plugin('bogus')
 
 
@@ -53,8 +52,8 @@ def test_load_validation_plugin_raises_with_invalid_subclass(monkeypatch):
     from bigchaindb import config_utils
     import time
     monkeypatch.setattr(config_utils,
-                        'iter_entry_points',
-                        lambda *args: [type('entry_point', (object, ), {'load': lambda: object})])
+                        'entry_points',
+                        lambda **kwargs: [type('entry_point', (object, ), {'load': lambda: object})])
 
     with pytest.raises(TypeError):
         # Since the function is decorated with `lru_cache`, we need to
@@ -65,8 +64,8 @@ def test_load_validation_plugin_raises_with_invalid_subclass(monkeypatch):
 def test_load_events_plugins(monkeypatch):
     from bigchaindb import config_utils
     monkeypatch.setattr(config_utils,
-                        'iter_entry_points',
-                        lambda *args: [type('entry_point', (object, ), {'load': lambda: object})])
+                        'entry_points',
+                        lambda **kwargs: [type('entry_point', (object, ), {'load': lambda: object})])
 
     plugins = config_utils.load_events_plugins(['one', 'two'])
     assert len(plugins) == 2

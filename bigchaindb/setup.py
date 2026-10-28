@@ -23,10 +23,9 @@ with open('bigchaindb/version.py') as fp:
 
 def check_setuptools_features():
     """Check if setuptools is up to date."""
-    import pkg_resources
-    try:
-        list(pkg_resources.parse_requirements('foo~=1.0'))
-    except ValueError:
+    from importlib.metadata import version as get_version
+    # setuptools 8.0 added PEP 440 `~=` support, which the old check probed for.
+    if int(get_version('setuptools').split('.')[0]) < 8:
         sys.exit('Your Python distribution comes with an incompatible version '
                  'of `setuptools`. Please run:\n'
                  ' $ pip3 install --upgrade setuptools\n'
