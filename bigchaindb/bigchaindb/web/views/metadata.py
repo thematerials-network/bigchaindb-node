@@ -13,7 +13,7 @@ from flask_restful import reqparse, Resource
 from flask import current_app
 
 from bigchaindb.backend.exceptions import OperationError
-from bigchaindb.web.views.base import make_error
+from bigchaindb.web.views.base import make_error, QueryArgument
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +29,7 @@ class MetadataApi(Resource):
         Return:
             A list of metadata that match the query.
         """
-        parser = reqparse.RequestParser()
+        parser = reqparse.RequestParser(argument_class=QueryArgument)
         parser.add_argument('search', type=str, required=True)
         parser.add_argument('limit', type=int)
         args = parser.parse_args()

@@ -14,7 +14,7 @@ from flask_restful import Resource, reqparse
 
 from bigchaindb.common.transaction_mode_types import BROADCAST_TX_ASYNC
 from bigchaindb.common.exceptions import SchemaValidationError, ValidationError
-from bigchaindb.web.views.base import make_error
+from bigchaindb.web.views.base import make_error, QueryArgument
 from bigchaindb.web.views import parameters
 from bigchaindb.models import Transaction
 
@@ -45,7 +45,7 @@ class TransactionApi(Resource):
 
 class TransactionListApi(Resource):
     def get(self):
-        parser = reqparse.RequestParser()
+        parser = reqparse.RequestParser(argument_class=QueryArgument)
         parser.add_argument('operation', type=parameters.valid_operation)
         parser.add_argument('asset_id', type=parameters.valid_txid,
                             required=True)
@@ -63,7 +63,7 @@ class TransactionListApi(Resource):
         Return:
             A ``dict`` containing the data about the transaction.
         """
-        parser = reqparse.RequestParser()
+        parser = reqparse.RequestParser(argument_class=QueryArgument)
         parser.add_argument('mode', type=parameters.valid_mode,
                             default=BROADCAST_TX_ASYNC)
         args = parser.parse_args()

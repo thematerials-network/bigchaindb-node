@@ -8,11 +8,31 @@
 import logging
 
 from flask import jsonify, request
+from flask_restful import reqparse
+from werkzeug.datastructures import MultiDict
 
 from bigchaindb import config
 
 
 logger = logging.getLogger(__name__)
+
+
+class QueryArgument(reqparse.Argument):
+    # Flask 1.x semantics: werkzeug >= 2.3 answers 415 when a non-JSON body is read as JSON.
+    def source(self, request):
+        if 'json' not in self.location:
+            return super().source(request)
+        values = MultiDict()
+        for location in self.location:
+            if location == 'json':
+                value = request.get_json() if request.is_json else None
+            else:
+                value = getattr(request, location, None)
+                if callable(value):
+                    value = value()
+            if value is not None:
+                values.update(value)
+        return values
 
 
 def make_error(status_code, message=None):

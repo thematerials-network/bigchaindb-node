@@ -7,6 +7,7 @@ from flask import current_app
 from flask_restful import reqparse, Resource
 
 from bigchaindb.web.views import parameters
+from bigchaindb.web.views.base import QueryArgument
 
 
 class OutputListApi(Resource):
@@ -17,7 +18,7 @@ class OutputListApi(Resource):
             Returns:
                 A :obj:`list` of :cls:`str` of links to outputs.
         """
-        parser = reqparse.RequestParser()
+        parser = reqparse.RequestParser(argument_class=QueryArgument)
         parser.add_argument('public_key', type=parameters.valid_ed25519,
                             required=True)
         parser.add_argument('spent', type=parameters.valid_bool)

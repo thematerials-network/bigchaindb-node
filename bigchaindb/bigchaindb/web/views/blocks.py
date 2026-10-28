@@ -10,7 +10,7 @@ For more information please refer to the documentation: http://bigchaindb.com/ht
 from flask import current_app
 from flask_restful import Resource, reqparse
 
-from bigchaindb.web.views.base import make_error
+from bigchaindb.web.views.base import make_error, QueryArgument
 
 
 class BlockApi(Resource):
@@ -44,7 +44,7 @@ class BlockListApi(Resource):
             list may be filtered when provided a status query parameter:
             "valid", "invalid", "undecided".
         """
-        parser = reqparse.RequestParser()
+        parser = reqparse.RequestParser(argument_class=QueryArgument)
         parser.add_argument('transaction_id', type=str, required=True)
 
         args = parser.parse_args(strict=True)
