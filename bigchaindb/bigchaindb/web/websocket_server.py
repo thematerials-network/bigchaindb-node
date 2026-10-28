@@ -171,7 +171,7 @@ def start(sync_event_source, loop=None):
     if not loop:
         loop = asyncio.get_event_loop()
 
-    event_source = asyncio.Queue(loop=loop)
+    event_source = asyncio.Queue()
 
     bridge = threading.Thread(target=_multiprocessing_to_asyncio,
                               args=(sync_event_source, event_source, loop),
@@ -181,4 +181,5 @@ def start(sync_event_source, loop=None):
     app = init_app(event_source, loop=loop)
     aiohttp.web.run_app(app,
                         host=config['wsserver']['host'],
-                        port=config['wsserver']['port'])
+                        port=config['wsserver']['port'],
+                        loop=loop)
