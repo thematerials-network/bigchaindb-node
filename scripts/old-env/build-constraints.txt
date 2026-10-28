@@ -1,0 +1,5 @@
+# Applied to pip build isolation envs via PIP_CONSTRAINT: old sdists need pkg_resources (gone in setuptools 82) and Cython<3.
+setuptools==80.9.0
+wheel==0.45.1
+cffi==2.0.0
+Cython<3
