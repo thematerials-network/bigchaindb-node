@@ -1,5 +1,5 @@
 #!/bin/bash
-# Installs prod's BigchainDB 2.2.2 environment (mercury's freeze) the way rebuild-venv.sh does.
+# Installs prod's BigchainDB 2.2.2 environment (the prod node freeze of 2026-10-22) the way rebuild-venv.sh does.
 # Runs inside python:3.9.25-slim-bookworm; scripts/old-env/build-image.sh commits the result.
 # amd64 only: gevent 20.6.2 and cryptography 2.3.1 come from the same PyPI wheels prod uses. arm64 has no
 # such wheels and gevent 20.6.2 cannot be compiled any more (needs Cython 3.0 alphas, gone from PyPI;

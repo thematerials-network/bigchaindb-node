@@ -7,6 +7,16 @@ set -euo pipefail
 bundle=$(cd "$(dirname "$1")" && pwd)/$(basename "$1")
 [[ -f $bundle ]] || { echo "no such bundle: $1" >&2; exit 1; }
 
+# The three fork wheels must ship their licence files (restored upstream LICENSE files + license_files in setup.py).
+unpacked=$(mktemp -d)
+tar -C "$unpacked" -xzf "$bundle"
+for pkg in bigchaindb cryptoconditions bigchaindb_abci; do
+  whl=$(ls "$unpacked"/*/wheels/"$pkg"-*.whl)
+  python3 -m zipfile -l "$whl" | grep -q -E 'dist-info/(licenses/)?LICENSE' || { echo "FAIL: wheel $pkg carries no LICENSE" >&2; exit 1; }
+done
+rm -rf "$unpacked"
+echo "--- licence files present in the three wheels"
+
 # docker run + commit, as scripts/old-env/build-image.sh: the legacy builder mixes up per-platform base layers.
 docker rm -f bdb-blank-node-build >/dev/null 2>&1 || true
 docker run --name bdb-blank-node-build --platform linux/amd64 ubuntu:24.04 bash -c \

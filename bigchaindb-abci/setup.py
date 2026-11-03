@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+# Modified by thematerials-network contributors, 2026; see NOTICE at the repository root.
 
 from setuptools import setup, find_packages
 from codecs import open
@@ -18,6 +19,7 @@ setup(
     url='https://github.com/ipdb/bigchaindb-abci',
     author='Dave Bryson',
     license='Apache 2.0',
+    license_files=['LICENSE'],
     classifiers=[
         'Development Status :: 3 - Alpha',
         'Intended Audience :: Developers',

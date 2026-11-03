@@ -1,4 +1,4 @@
-# BigchainDB 2.2.2 runtime: exact pip freeze of mercury's working venv (Python 3.9.25, 2026-10-22).
+# BigchainDB 2.2.2 runtime: exact pip freeze of a prod node's working venv (Python 3.9.25, 2026-10-22).
 # Install with: pip install --no-deps --no-build-isolation -r requirements.txt (see rebuild-venv.sh).
 # Toolchain (pip, setuptools, wheel) is pinned in rebuild-venv.sh, not here.
 aiohttp==3.6.2

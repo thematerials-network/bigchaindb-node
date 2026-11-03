@@ -1,11 +1,11 @@
 #!/bin/bash
-# Copies the old-chain replay inputs (read-only originals in ~/s1seven/old-chain-work) into test-results/replay/inputs,
+# Copies the old-chain replay inputs (read-only originals in $OLD_CHAIN_WORK) into test-results/replay/inputs,
 # verifies every copy against the recorded SHA-256, and makes the copies read-only.
 # Inputs: rebuilt/rebuilt-transactions.jsonl (+ .sha256), step7-block-membership-2026-10-22.csv,
 #         extract/tendermint/config/genesis.json and extract/tendermint/data/{blockstore,state,evidence,tx_index}.db
 #         (checked against extract/SHA256SUMS). Never copied: config.toml, addrbook.json (peers of the real network).
 set -euo pipefail
-src=${OLD_CHAIN_WORK:-$HOME/s1seven/old-chain-work}
+src=${OLD_CHAIN_WORK:?set OLD_CHAIN_WORK to the directory holding the replay inputs}
 root=$(cd "$(dirname "$0")/../.." && pwd)
 dst=$root/test-results/replay/inputs
 if [[ -e $dst/VERIFIED ]]; then echo "inputs already verified: $dst"; exit 0; fi

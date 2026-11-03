@@ -36,7 +36,7 @@ Behaviour:
   process validates first and answers 500 as before. Code 2 is visible on Tendermint's RPC only;
   BigchainDB's HTTP API turns every non-zero code into 500 `Transaction validation failed`.
 - `cryptoconditions/fulfillment.py`: a `RecursionError` from pyasn1 while decoding a fulfillment
-  (new.thematerials.network#8, `'0' * 64`) is an `ASN1DecodeError`, so BigchainDB rejects the
+  (a `'0' * 64` condition) is an `ASN1DecodeError`, so BigchainDB rejects the
   transaction as `InvalidSignature` (code 1; HTTP 400 instead of prod's 500).
 - `bigchaindb/lib.py`: the log line for inputs that rapidjson rejects and jsonschema accepts
   (NaN, Infinity, `version: "2.0\n"`) no longer raises `AttributeError`; the transaction is
@@ -116,7 +116,7 @@ the Tendermint container's log is saved next to the pytest log.
 
 `scripts/replay/` replays a copy of the old chain's blockstore through both stacks on isolated
 Docker networks and compares app hashes and MongoDB contents per block. It needs the local inputs
-in `~/s1seven/old-chain-work`; see the header of each script (`prepare.sh`, `side.sh`, `watch.sh`,
+in the directory `OLD_CHAIN_WORK` points to; see the header of each script (`prepare.sh`, `side.sh`, `watch.sh`,
 `collect.sh`, `compare.sh`) and `make image-iproute2`.
 
 ## Release bundle and `install.sh`

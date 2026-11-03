@@ -2,6 +2,7 @@
 # BigchainDB and IPDB software contributors.
 # SPDX-License-Identifier: (Apache-2.0 AND CC-BY-4.0)
 # Code is Apache-2.0 and docs are CC-BY-4.0
+# Modified by thematerials-network contributors, 2026; see NOTICE at the repository root.
 
 import json
 import pytest
@@ -246,7 +247,7 @@ def malformed_fulfillment_tx_bytes():
     return json.dumps(tx).encode('utf8')
 
 
-# thematerials-network/new.thematerials.network#8: pyasn1 0.6 raises RecursionError, which kills the ABCI connection
+# pyasn1 0.6 raises RecursionError on a '0' * 64 condition, which kills the ABCI connection
 def test_check_tx__malformed_fulfillment_is_error(a, b):
     app = App(a, b)
     result = app.check_tx(malformed_fulfillment_tx_bytes())
