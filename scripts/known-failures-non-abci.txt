@@ -1,0 +1,12 @@
+# Failures expected on both prod's stack and the fork; anything else fails scripts/test-in-docker.sh.
+tests/backend/localmongodb/test_queries.py::test_text_search[assets]
+tests/backend/localmongodb/test_queries.py::test_text_search[metadata]
+tests/tendermint/test_core.py::test_check_tx__malformed_fulfillment_is_error
+tests/tendermint/test_core.py::test_deliver_tx__malformed_fulfillment_is_error
+tests/tendermint/test_core.py::test_check_tx__rapidjson_only_rejection_is_error[metadata-value0]
+tests/tendermint/test_core.py::test_check_tx__rapidjson_only_rejection_is_error[metadata-value1]
+tests/tendermint/test_core.py::test_check_tx__rapidjson_only_rejection_is_error[version-2.0\n]
+tests/tendermint/test_core.py::test_deliver_tx__rapidjson_only_rejection_is_error[metadata-value0]
+tests/tendermint/test_core.py::test_deliver_tx__rapidjson_only_rejection_is_error[metadata-value1]
+tests/tendermint/test_core.py::test_deliver_tx__rapidjson_only_rejection_is_error[version-2.0\n]
+tests/test_docs.py::test_build_root_docs

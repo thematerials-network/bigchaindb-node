@@ -20,6 +20,18 @@ def test_get_assets_with_missing_text_search(client):
     assert res.status_code == 400
 
 
+def test_get_assets_ignores_a_form_body(client):
+    res = client.get(ASSETS_ENDPOINT, data={'search': ''})
+    assert res.status_code == 400
+    assert res.json == {'message': {'search': 'Missing required parameter in the JSON body or the post body or the query string'}}
+
+
+def test_get_assets_ignores_a_non_json_body(client):
+    res = client.get(ASSETS_ENDPOINT + '?search=', data='x', content_type='text/plain')
+    assert res.json == {'status': 400,
+                        'message': 'text_search cannot be empty'}
+
+
 @pytest.mark.bdb
 def test_get_assets_tendermint(client, b, alice):
     from bigchaindb.models import Transaction

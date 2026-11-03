@@ -52,11 +52,13 @@ def test_eventify_block_works_with_any_transaction():
         assert event == expected
 
 
-async def test_bridge_sync_async_queue(loop):
+@pytest.mark.asyncio
+async def test_bridge_sync_async_queue():
     from bigchaindb.web.websocket_server import _multiprocessing_to_asyncio
 
+    loop = asyncio.get_running_loop()
     sync_queue = queue.Queue()
-    async_queue = asyncio.Queue(loop=loop)
+    async_queue = asyncio.Queue()
 
     bridge = threading.Thread(target=_multiprocessing_to_asyncio,
                               args=(sync_queue, async_queue, loop),
@@ -106,15 +108,61 @@ def test_start_creates_an_event_loop(queue_mock, get_event_loop_mock,
         init_app_mock.return_value,
         host=config['wsserver']['host'],
         port=config['wsserver']['port'],
+        loop=get_event_loop_mock.return_value,
     )
 
 
-async def test_websocket_string_event(test_client, loop):
+def test_start_serves_events_when_run_as_a_process(monkeypatch):
+    import multiprocessing
+    import socket
+    import aiohttp
+    from bigchaindb.utils import Process
+    from bigchaindb.web import websocket_server
+
+    with socket.socket() as sock:
+        sock.bind(('127.0.0.1', 0))
+        port = sock.getsockname()[1]
+    monkeypatch.setitem(websocket_server.config['wsserver'], 'host', '127.0.0.1')
+    monkeypatch.setitem(websocket_server.config['wsserver'], 'port', port)
+
+    # Started the way `bigchaindb start` does it (bigchaindb/start.py).
+    event_queue = multiprocessing.Queue()
+    process = Process(name='bigchaindb_ws', target=websocket_server.start,
+                      args=(event_queue,), daemon=True)
+    process.start()
+
+    async def receive_event():
+        url = f'http://127.0.0.1:{port}{websocket_server.EVENTS_ENDPOINT}'
+        async with aiohttp.ClientSession() as session:
+            for _ in range(100):
+                assert process.is_alive(), f'websocket server exited with code {process.exitcode}'
+                try:
+                    websocket = await session.ws_connect(url)
+                    break
+                except aiohttp.ClientConnectorError:
+                    await asyncio.sleep(0.1)
+            else:
+                pytest.fail('websocket server did not accept connections')
+            event_queue.put('hello')
+            message = await websocket.receive(timeout=10)
+            await websocket.close()
+            return message.data
+
+    try:
+        assert asyncio.run(receive_event()) == 'hello'
+    finally:
+        process.terminate()
+        process.join()
+
+
+@pytest.mark.asyncio
+async def test_websocket_string_event(aiohttp_client):
     from bigchaindb.web.websocket_server import init_app, POISON_PILL, EVENTS_ENDPOINT
 
-    event_source = asyncio.Queue(loop=loop)
+    loop = asyncio.get_running_loop()
+    event_source = asyncio.Queue()
     app = init_app(event_source, loop=loop)
-    client = await test_client(app)
+    client = await aiohttp_client(app)
     ws = await client.ws_connect(EVENTS_ENDPOINT)
 
     await event_source.put('hack')
@@ -133,7 +181,8 @@ async def test_websocket_string_event(test_client, loop):
     await event_source.put(POISON_PILL)
 
 
-async def test_websocket_block_event(b, test_client, loop):
+@pytest.mark.asyncio
+async def test_websocket_block_event(b, aiohttp_client):
     from bigchaindb import events
     from bigchaindb.web.websocket_server import init_app, POISON_PILL, EVENTS_ENDPOINT
     from bigchaindb.models import Transaction
@@ -143,9 +192,10 @@ async def test_websocket_block_event(b, test_client, loop):
     tx = Transaction.create([user_pub], [([user_pub], 1)])
     tx = tx.sign([user_priv])
 
-    event_source = asyncio.Queue(loop=loop)
+    loop = asyncio.get_running_loop()
+    event_source = asyncio.Queue()
     app = init_app(event_source, loop=loop)
-    client = await test_client(app)
+    client = await aiohttp_client(app)
     ws = await client.ws_connect(EVENTS_ENDPOINT)
     block = {'height': 1, 'transactions': [tx]}
     block_event = events.Event(events.EventTypes.BLOCK_VALID, block)

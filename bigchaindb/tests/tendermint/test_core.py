@@ -232,6 +232,71 @@ def test_check_tx__unsigned_create_is_error(a, b):
     assert result.code == CodeTypeError
 
 
+def malformed_fulfillment_tx_bytes():
+    from bigchaindb.models import Transaction
+    from bigchaindb.common.crypto import generate_key_pair
+
+    alice = generate_key_pair()
+    tx = Transaction.create([alice.public_key], [([alice.public_key], 1)])\
+                    .sign([alice.private_key]).to_dict()
+    tx['inputs'][0]['fulfillment'] = '0' * 64
+    tx['id'] = None
+    tx['id'] = Transaction._to_hash(Transaction._to_str(tx))
+    return json.dumps(tx).encode('utf8')
+
+
+# thematerials-network/new.thematerials.network#8: pyasn1 0.6 raises RecursionError, which kills the ABCI connection
+def test_check_tx__malformed_fulfillment_is_error(a, b):
+    app = App(a, b)
+    result = app.check_tx(malformed_fulfillment_tx_bytes())
+    assert result.code == CodeTypeError
+
+
+def test_deliver_tx__malformed_fulfillment_is_error(a, b):
+    app = App(a, b)
+    app.begin_block(a.RequestBeginBlock())
+    result = app.deliver_tx(malformed_fulfillment_tx_bytes())
+    assert result.code == CodeTypeError
+    assert app.block_txn_ids == []
+
+
+def rapidjson_rejected_tx_bytes(field, value):
+    from bigchaindb.models import Transaction
+    from bigchaindb.common.crypto import generate_key_pair
+
+    alice = generate_key_pair()
+    tx = Transaction.create([alice.public_key], [([alice.public_key], 1)])\
+                    .sign([alice.private_key]).to_dict()
+    tx[field] = value
+    tx['id'] = None
+    tx['id'] = Transaction._to_hash(Transaction._to_str(tx))
+    return json.dumps(tx).encode('utf8')
+
+
+# rapidjson rejects, jsonschema accepts, then lib.py logs `e.__cause__.message` and raises AttributeError
+RAPIDJSON_ONLY_REJECTS = [
+    ('metadata', {'x': float('nan')}),
+    ('metadata', {'x': float('inf')}),
+    ('version', '2.0\n'),
+]
+
+
+@pytest.mark.parametrize('field,value', RAPIDJSON_ONLY_REJECTS)
+def test_check_tx__rapidjson_only_rejection_is_error(a, b, field, value):
+    app = App(a, b)
+    result = app.check_tx(rapidjson_rejected_tx_bytes(field, value))
+    assert result.code == CodeTypeError
+
+
+@pytest.mark.parametrize('field,value', RAPIDJSON_ONLY_REJECTS)
+def test_deliver_tx__rapidjson_only_rejection_is_error(a, b, field, value):
+    app = App(a, b)
+    app.begin_block(a.RequestBeginBlock())
+    result = app.deliver_tx(rapidjson_rejected_tx_bytes(field, value))
+    assert result.code == CodeTypeError
+    assert app.block_txn_ids == []
+
+
 def test_deliver_tx__valid_create_updates_db_and_emits_event(a, b, init_chain_request):
     import multiprocessing as mp
     from bigchaindb import App

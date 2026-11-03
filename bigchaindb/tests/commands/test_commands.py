@@ -20,6 +20,11 @@ from bigchaindb.migrations.chain_migration_election import ChainMigrationElectio
 from tests.utils import generate_election, generate_validators
 
 
+def get_bigchaindb_records(caplog):
+    # pymongo 4 logs to the same handlers; keep only BigchainDB's own records.
+    return [record for record in caplog.records if record.name.startswith('bigchaindb')]
+
+
 def test_make_sure_we_dont_remove_any_command():
     # thanks to: http://stackoverflow.com/a/18161115/597097
     from bigchaindb.commands.bigchaindb import create_parser
@@ -344,7 +349,7 @@ def test_election_new_upsert_validator_without_tendermint(caplog, b, priv_valida
 
     with caplog.at_level(logging.INFO):
         election_id = run_election_new_upsert_validator(args, b)
-        assert caplog.records[0].msg == '[SUCCESS] Submitted proposal with id: ' + election_id
+        assert get_bigchaindb_records(caplog)[0].msg == '[SUCCESS] Submitted proposal with id: ' + election_id
         assert b.get_transaction(election_id)
 
 
@@ -380,7 +385,7 @@ def test_election_new_chain_migration_without_tendermint(caplog, b, priv_validat
 
     with caplog.at_level(logging.INFO):
         election_id = run_election_new_chain_migration(args, b)
-        assert caplog.records[0].msg == '[SUCCESS] Submitted proposal with id: ' + election_id
+        assert get_bigchaindb_records(caplog)[0].msg == '[SUCCESS] Submitted proposal with id: ' + election_id
         assert b.get_transaction(election_id)
 
 
@@ -398,7 +403,7 @@ def test_election_new_upsert_validator_invalid_election(caplog, b, priv_validato
 
     with caplog.at_level(logging.ERROR):
         assert not run_election_new_upsert_validator(args, b)
-        assert caplog.records[0].msg.__class__ == FileNotFoundError
+        assert get_bigchaindb_records(caplog)[0].msg.__class__ == FileNotFoundError
 
 
 @pytest.mark.bdb
@@ -422,7 +427,7 @@ def test_election_new_upsert_validator_invalid_power(caplog, b, priv_validator_p
 
     with caplog.at_level(logging.ERROR):
         assert not run_election_new_upsert_validator(args, b)
-        assert caplog.records[0].msg.__class__ == InvalidPowerChange
+        assert get_bigchaindb_records(caplog)[0].msg.__class__ == InvalidPowerChange
 
 
 @pytest.mark.abci
@@ -467,7 +472,7 @@ def test_election_approve_without_tendermint(caplog, b, priv_validator_path, new
     # assert returned id is in the db
     with caplog.at_level(logging.INFO):
         approval_id = run_election_approve(args, b)
-        assert caplog.records[0].msg == '[SUCCESS] Your vote has been submitted'
+        assert get_bigchaindb_records(caplog)[0].msg == '[SUCCESS] Your vote has been submitted'
         assert b.get_transaction(approval_id)
 
 
@@ -492,7 +497,7 @@ def test_election_approve_failure(caplog, b, priv_validator_path, new_validator,
 
     with caplog.at_level(logging.ERROR):
         assert not run_election_approve(args, b)
-        assert caplog.records[0].msg == 'Failed to commit vote'
+        assert get_bigchaindb_records(caplog)[0].msg == 'Failed to commit vote'
 
 
 @pytest.mark.bdb
@@ -510,7 +515,7 @@ def test_election_approve_called_with_bad_key(caplog, b, bad_validator_path, new
 
     with caplog.at_level(logging.ERROR):
         assert not run_election_approve(args, b)
-        assert caplog.records[0].msg == 'The key you provided does not match any of '\
+        assert get_bigchaindb_records(caplog)[0].msg == 'The key you provided does not match any of '\
             'the eligible voters in this election.'
 
 

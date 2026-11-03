@@ -99,8 +99,8 @@ def test_connection_run_errors():
     assert query.run.call_count == 1
 
 
-@mock.patch('pymongo.database.Database.authenticate')
-def test_connection_with_credentials(mock_authenticate):
+@mock.patch('pymongo.MongoClient')
+def test_connection_with_credentials(mock_client):
     import bigchaindb
     from bigchaindb.backend.localmongodb.connection import LocalMongoDBConnection
     conn = LocalMongoDBConnection(host=bigchaindb.config['database']['host'],
@@ -108,4 +108,7 @@ def test_connection_with_credentials(mock_authenticate):
                                   login='theplague',
                                   password='secret')
     conn.connect()
-    assert mock_authenticate.call_count == 1
+    assert mock_client.call_count == 1
+    assert mock_client.call_args.kwargs['username'] == 'theplague'
+    assert mock_client.call_args.kwargs['password'] == 'secret'
+    assert mock_client.call_args.kwargs['authSource'] == conn.dbname

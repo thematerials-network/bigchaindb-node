@@ -9,7 +9,7 @@ properties related to validation.
 
 from unittest.mock import patch
 
-from hypothesis import given
+from hypothesis import given, settings, HealthCheck
 from hypothesis.strategies import from_regex as regex
 from pytest import raises
 
@@ -74,6 +74,7 @@ def test_validate_failure_inconsistent():
             validate_transaction_schema({})
 
 
+@settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
 @given(condition_uri=regex(
     r'^ni:\/\/\/sha-256;([a-zA-Z0-9_-]{{0,86}})\?fpt=({})'
     r'&cost=[0-9]+(?![\n])$'.format('|'.join(
@@ -83,6 +84,7 @@ def test_condition_uri_with_supported_fpt(dummy_transaction, condition_uri):
     validate_transaction_schema(dummy_transaction)
 
 
+@settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
 @given(condition_uri=regex(r'^ni:\/\/\/sha-256;([a-zA-Z0-9_-]{{0,86}})\?fpt='
                            r'({})&cost=[0-9]+(?![\n])$'.format(
                                '|'.join(UNSUPPORTED_CRYPTOCONDITION_TYPES))))
@@ -92,6 +94,7 @@ def test_condition_uri_with_unsupported_fpt(dummy_transaction, condition_uri):
         validate_transaction_schema(dummy_transaction)
 
 
+@settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
 @given(condition_uri=regex(
     r'^ni:\/\/\/sha-256;([a-zA-Z0-9_-]{{0,86}})\?fpt=(?!{})'
     r'&cost=[0-9]+(?![\n])$'.format('$|'.join(
@@ -102,6 +105,7 @@ def test_condition_uri_with_unknown_fpt(dummy_transaction, condition_uri):
         validate_transaction_schema(dummy_transaction)
 
 
+@settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
 @given(condition_uri=regex(
     r'^ni:\/\/\/sha-256;([a-zA-Z0-9_-]{0,86})\?fpt=threshold-sha-256'
     r'&cost=[0-9]+&subtypes=ed25519-sha-256(?![\n])$'))
@@ -111,6 +115,7 @@ def test_condition_uri_with_supported_subtype(dummy_transaction,
     validate_transaction_schema(dummy_transaction)
 
 
+@settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
 @given(condition_uri=regex(
     r'^ni:\/\/\/sha-256;([a-zA-Z0-9_-]{0,86})\?fpt=threshold-sha-256&cost='
     r'[0-9]+&subtypes=(preimage-sha-256|prefix-sha-256|rsa-sha-256)(?![\n])$'))
@@ -121,6 +126,7 @@ def test_condition_uri_with_unsupported_subtype(dummy_transaction,
         validate_transaction_schema(dummy_transaction)
 
 
+@settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
 @given(condition_uri=regex(
     r'^ni:\/\/\/sha-256;([a-zA-Z0-9_-]{{0,86}})\?fpt=threshold-sha-256'
     r'&cost=[0-9]+&subtypes=(?!{})(?![\n])$'.format('$|'.join(
