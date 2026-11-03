@@ -97,12 +97,15 @@ make wheels                # dist/: the three wheels
 make image-new             # bdb-new-env:arm64 (ARCH=amd64 for amd64)
 make test                  # fork test suites in Docker (ARCH=arm64 by default)
 make bundle test-install   # release bundle for Ubuntu 24.04 / Python 3.12 / amd64, then install.sh in a blank container
+make test-bundle           # fork test suites against the venv install.sh builds from that bundle (amd64; what CI runs)
+make lock                  # rewrite the PyPI hashes in requirements-py312.txt after changing a version
 make image-old test-old    # prod's exact stack (amd64, emulated on Apple silicon) and upstream's suites
 make diff                  # old stack vs fork: transaction corpus, HTTP API, websocket events
 ```
 
 `requirements-py312.txt` pins every dependency of the tested set (61 packages, 0 known advisories
-in the 2026-10-27 pip-audit scan). Output goes to `test-results/` (git-excluded).
+in the 2026-10-27 pip-audit scan) with the sha256 of every PyPI file Python 3.12 can install, so pip
+runs in hash-checking mode wherever the file is used. Output goes to `test-results/` (git-excluded).
 
 ### Expected test results
 
@@ -124,9 +127,10 @@ in the directory `OLD_CHAIN_WORK` points to; see the header of each script (`pre
 `scripts/bundle/build-bundle.sh` (run on Ubuntu 24.04 / Python 3.12 / x86_64; `make bundle` runs it
 in an `ubuntu:24.04` container) writes `dist/bigchaindb-node-<version>-ubuntu24.04-amd64.tar.gz`:
 `wheels/` (the three fork wheels and one wheel per line of `requirements-py312.txt`), `install.sh`,
-`requirements-py312.txt`, `SHA256SUMS`, `BUNDLE` (key=value: release version, the three package versions, commit, build time, builder, platform; install.sh pins from it and copies it into the venv). `install.sh [venv]`
+`requirements-py312.txt` (the pins without hashes: the logstats wheel is built from its sdist, and
+`SHA256SUMS` covers every wheel), `SHA256SUMS`, `BUNDLE` (key=value: release version, the three package versions, commit, build time, builder, platform; install.sh pins from it and copies it into the venv). `install.sh [venv]`
 checks the host (x86_64, `python3.12` with the venv module, i.e. apt `python3.12-venv`) and the
-checksums, then creates the venv (default `/home/bigchaindb/venv`, replacing an existing one) and
+checksums, then creates the venv (default `/home/bigchaindb/venv`; it must not exist yet) and
 installs everything from `wheels/` offline (`pip --no-index`); it writes nothing else and chowns the
 venv to `bigchaindb` when run as root. The node recipe (Ansible, `new.thematerials.network`)
 prepares the user and the apt package and calls `install.sh` as one step.

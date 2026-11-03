@@ -1,5 +1,6 @@
 #!/bin/bash
-# Runs the BigchainDB test suite on Linux in Docker.
+# Runs the BigchainDB test suite on Linux in Docker: against the source tree in python:3.12-slim, or, with
+# BUNDLE=<bundle .tar.gz> (amd64 only), against the venv install.sh builds from that bundle in ubuntu:24.04.
 # Usage: scripts/test-in-docker.sh <arm64|amd64> <non-abci|abci>     (K=<pytest -k expression> narrows the run)
 set -euo pipefail
 
@@ -10,6 +11,17 @@ results=$root/test-results
 prefix=bdb-node-$arch-$suite
 network=$prefix-net
 mkdir -p "$results"
+[[ ${BUNDLE-unset} != '' ]] || { echo "BUNDLE is set but empty (no bundle in dist/? make bundle first)" >&2; exit 1; }
+bundle=${BUNDLE:+$(cd "$(dirname "$BUNDLE")" && pwd)/$(basename "$BUNDLE")}
+if [[ -n $bundle ]]; then
+  [[ -f $bundle ]] || { echo "no such bundle: $BUNDLE" >&2; exit 1; }
+  [[ $arch == amd64 ]] || { echo "BUNDLE needs amd64: the bundle holds x86_64 wheels" >&2; exit 1; }
+  image=ubuntu:24.04
+  mounts=(-v "$bundle:/bundle.tar.gz:ro")
+else
+  image=python:3.12-slim
+  mounts=()
+fi
 
 cleanup() {
   docker logs "$prefix-tendermint" > "$results/$prefix-tendermint.log" 2>&1 || true
@@ -34,7 +46,7 @@ fi
 
 docker run --name "$prefix-tests" --network "$network" --network-alias bigchaindb \
   --platform "linux/$arch" \
-  -v "$root:/src:ro" -v "$results:/results" \
+  -v "$root:/src:ro" -v "$results:/results" ${mounts[@]+"${mounts[@]}"} \
   -e BIGCHAINDB_DATABASE_BACKEND=localmongodb \
   -e BIGCHAINDB_DATABASE_HOST=mongodb \
   -e BIGCHAINDB_DATABASE_PORT=27017 \
@@ -43,19 +55,30 @@ docker run --name "$prefix-tests" --network "$network" --network-alias bigchaind
   -e BIGCHAINDB_SERVER_BIND=0.0.0.0:9984 \
   -e BIGCHAINDB_WSSERVER_HOST=0.0.0.0 \
   -e BIGCHAINDB_WSSERVER_ADVERTISED_HOST=bigchaindb \
-  -e "MARKER=$marker" -e "K=${K:-}" -e "LOG=/results/$prefix.log" \
-  python:3.12-slim bash -c '
+  -e "MARKER=$marker" -e "K=${K:-}" -e "LOG=/results/$prefix.log" -e "FROM_BUNDLE=${bundle:+yes}" \
+  "$image" bash -c '
     set -euo pipefail
-    cp -a /src/bigchaindb /src/cryptoconditions /src/bigchaindb-abci /src/requirements-py312.txt /tmp/
-    cd /tmp
-    pip install -q --root-user-action=ignore --disable-pip-version-check -r requirements-py312.txt
-    pip install -q --root-user-action=ignore --disable-pip-version-check --no-deps --no-build-isolation \
-      ./cryptoconditions ./bigchaindb-abci ./bigchaindb
+    if [[ -n $FROM_BUNDLE ]]; then
+      apt-get update -qq && apt-get install -y -qq --no-install-recommends python3.12-venv >/dev/null
+      mkdir /tmp/bundle && tar -C /tmp/bundle --strip-components=1 -xzf /bundle.tar.gz
+      /tmp/bundle/install.sh /opt/venv
+      export PATH=/opt/venv/bin:$PATH
+      # Only the tests and pytest.ini: with the source package beside them, pytest would import it instead of the venv.
+      mkdir /tmp/suite && cp -a /src/bigchaindb/tests /src/bigchaindb/pytest.ini /tmp/suite/ && cd /tmp/suite
+    else
+      cp -a /src/bigchaindb /src/cryptoconditions /src/bigchaindb-abci /src/requirements-py312.txt /tmp/
+      cd /tmp
+      /src/scripts/install-requirements.sh pip requirements-py312.txt -q --root-user-action=ignore --disable-pip-version-check
+      pip install -q --root-user-action=ignore --disable-pip-version-check --no-deps --no-build-isolation \
+        ./cryptoconditions ./bigchaindb-abci ./bigchaindb
+      cd /tmp/bigchaindb
+    fi
     python -c "import platform, sys; print(platform.machine(), sys.version)" > "$LOG"
+    PYTHONPATH=/tmp python -c "import bigchaindb; print(\"bigchaindb from\", bigchaindb.__file__)" >> "$LOG"
+    [[ -z $FROM_BUNDLE ]] || grep -q "^bigchaindb from /opt/venv/" "$LOG" || { echo "FAIL: tests would not run against the bundle venv" >&2; exit 1; }
     python -c "from google.protobuf.internal import api_implementation as a; print(\"protobuf\", a.Type())" >> "$LOG"
     # No Hypothesis deadline: timing under amd64 emulation is not a test result.
     printf "from hypothesis import settings\nsettings.register_profile(\"no_deadline\", deadline=None)\nsettings.load_profile(\"no_deadline\")\n" > /tmp/no_deadline.py
-    cd /tmp/bigchaindb
     PYTHONPATH=/tmp python -m pytest -p no:cacheprovider -p no_deadline -q -rfEs -W ignore -m "$MARKER" -k "$K" >> "$LOG" 2>&1 || true
     tail -1 "$LOG"
   '
