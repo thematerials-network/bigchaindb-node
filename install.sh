@@ -1,6 +1,7 @@
 #!/bin/bash
 # Installs the BigchainDB node fork from the release bundle this script sits in: a Python 3.12 venv with the
-# tested dependency set (requirements-py312.txt) and the three wheels, all from wheels/, offline.
+# tested dependency set (requirements-py312.txt) and the three wheels at the versions BUNDLE names, all from wheels/,
+# offline. BUNDLE is copied into the venv so the node can report what is installed.
 # Usage: ./install.sh [venv directory]      (default /home/bigchaindb/venv; must not exist yet)
 # Upgrades install into a new versioned directory and switch a symlink afterwards; nothing is ever deleted here.
 # Requires Ubuntu 24.04 on x86_64 with python3.12 and its venv module (apt package python3.12-venv).
@@ -21,14 +22,20 @@ python3.12 -c 'import ensurepip' 2>/dev/null || fail 'python3.12 has no venv mod
 
 (cd "$bundle" && sha256sum --quiet -c SHA256SUMS) || fail 'bundle checksums do not match'
 
+stamp() { sed -n "s/^$1=//p" "$bundle/BUNDLE"; }
+version=$(stamp version)
+[[ -n $version && -n $(stamp bigchaindb) && -n $(stamp cryptoconditions) && -n $(stamp bigchaindb_abci) ]] \
+  || fail 'BUNDLE lacks version=, bigchaindb=, cryptoconditions= or bigchaindb_abci='
+
 python3.12 -m venv "$venv"
 "$venv/bin/pip" install --quiet --no-index --find-links "$bundle/wheels" -r "$bundle/requirements-py312.txt"
 "$venv/bin/pip" install --quiet --no-index --no-deps --find-links "$bundle/wheels" \
-  cryptoconditions==0.8.0 bigchaindb-abci==1.0.5 bigchaindb==2.2.2
+  "cryptoconditions==$(stamp cryptoconditions)" "bigchaindb-abci==$(stamp bigchaindb_abci)" "bigchaindb==$(stamp bigchaindb)"
 "$venv/bin/pip" check >/dev/null || fail 'pip check failed'
 "$venv/bin/python" -c 'import bigchaindb, cryptoconditions, abci; from bigchaindb.web import server'
+cp "$bundle/BUNDLE" "$venv/BUNDLE"
 
 if [[ $(id -u) == 0 ]] && id bigchaindb >/dev/null 2>&1; then
   chown -R bigchaindb: "$venv"
 fi
-echo "installed $("$venv/bin/bigchaindb" --version) into $venv ($(cat "$bundle/BUNDLE"))"
+echo "installed bigchaindb-node $version ($("$venv/bin/bigchaindb" --version), commit $(stamp commit)) into $venv"

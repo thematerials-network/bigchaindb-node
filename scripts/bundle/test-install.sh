@@ -34,6 +34,7 @@ docker run --rm --platform linux/amd64 --network none -v "$bundle:/bundle.tar.gz
   stray=$(find / -xdev -newer /tmp/before-install -type f 2>/dev/null | grep -v "^/home/bigchaindb/venv/\|^/tmp/\|^/root/.cache/\|^/usr/lib/python3.12/.*__pycache__/" || true)
   [[ -z $stray ]] || { echo "$stray"; echo "FAIL: install.sh wrote outside the venv" >&2; exit 1; }
   echo none
+  grep -q "^version=" /home/bigchaindb/venv/BUNDLE || { echo "FAIL: the venv has no BUNDLE stamp with a version= line" >&2; exit 1; }
   owner=$(stat -c %U:%G /home/bigchaindb/venv)
   echo "--- owner: $owner, $(/home/bigchaindb/venv/bin/python --version)"
   [[ $owner == bigchaindb:bigchaindb ]] || { echo "FAIL: venv owned by $owner, not bigchaindb" >&2; exit 1; }

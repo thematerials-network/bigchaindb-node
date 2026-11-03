@@ -124,7 +124,7 @@ in the directory `OLD_CHAIN_WORK` points to; see the header of each script (`pre
 `scripts/bundle/build-bundle.sh` (run on Ubuntu 24.04 / Python 3.12 / x86_64; `make bundle` runs it
 in an `ubuntu:24.04` container) writes `dist/bigchaindb-node-<version>-ubuntu24.04-amd64.tar.gz`:
 `wheels/` (the three fork wheels and one wheel per line of `requirements-py312.txt`), `install.sh`,
-`requirements-py312.txt`, `SHA256SUMS`, `BUNDLE` (commit, date, builder). `install.sh [venv]`
+`requirements-py312.txt`, `SHA256SUMS`, `BUNDLE` (key=value: release version, the three package versions, commit, build time, builder, platform; install.sh pins from it and copies it into the venv). `install.sh [venv]`
 checks the host (x86_64, `python3.12` with the venv module, i.e. apt `python3.12-venv`) and the
 checksums, then creates the venv (default `/home/bigchaindb/venv`, replacing an existing one) and
 installs everything from `wheels/` offline (`pip --no-index`); it writes nothing else and chowns the

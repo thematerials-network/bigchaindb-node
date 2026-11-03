@@ -1,6 +1,7 @@
 #!/bin/bash
 # Builds the release bundle for Ubuntu 24.04 / Python 3.12 / x86_64: the three fork wheels, a wheel for every
-# dependency in requirements-py312.txt, install.sh, requirements-py312.txt, NOTICE, SHA256SUMS and a BUNDLE stamp,
+# dependency in requirements-py312.txt, install.sh, requirements-py312.txt, NOTICE, SHA256SUMS and a BUNDLE stamp
+# (key=value: release version, the three package versions, commit, build time, builder, platform),
 # as dist/bigchaindb-node-<version>-ubuntu24.04-amd64.tar.gz.
 # Run on the target platform itself (the CI runner, or `make bundle` for a Docker build of it). Needs network.
 # Usage: scripts/bundle/build-bundle.sh [python executable]   (default python3.12)
@@ -26,8 +27,19 @@ mkdir "$work/src" && cp -a "$root/cryptoconditions" "$root/bigchaindb-abci" "$ro
 "$work/venv/bin/pip" wheel -q --disable-pip-version-check --no-deps --no-build-isolation -w "$work/$name/wheels" -r "$root/requirements-py312.txt"
 
 cp "$root/install.sh" "$root/requirements-py312.txt" "$root/NOTICE" "$work/$name/"
-printf 'commit %s, built %s on %s, %s\n' "$(git -C "$root" rev-parse --short HEAD 2>/dev/null || echo unknown)" \
-  "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$(. /etc/os-release && echo "$PRETTY_NAME")" "$("$python" --version)" > "$work/$name/BUNDLE"
+# BUNDLE: key=value lines. install.sh pins the three packages from it; the node recipe reads version=.
+wheel_version() { basename "$(ls "$work/$name/wheels/$1"-*.whl)" | cut -d- -f2; }
+{
+  echo "version=$version"
+  echo "bigchaindb=$(wheel_version bigchaindb)"
+  echo "cryptoconditions=$(wheel_version cryptoconditions)"
+  echo "bigchaindb_abci=$(wheel_version bigchaindb_abci)"
+  echo "commit=$(git -C "$root" rev-parse HEAD 2>/dev/null || echo unknown)"
+  echo "built=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  echo "builder=$(. /etc/os-release && echo "$PRETTY_NAME"), $("$python" --version)"
+  echo "platform=ubuntu24.04-amd64"
+} > "$work/$name/BUNDLE"
+[[ $(sed -n 's/^bigchaindb=//p' "$work/$name/BUNDLE") == "$version" ]] || { echo "build-bundle.sh: bigchaindb wheel version differs from version.py ($version)" >&2; exit 1; }
 (cd "$work/$name" && find wheels install.sh requirements-py312.txt NOTICE BUNDLE -type f | LC_ALL=C sort | xargs sha256sum > SHA256SUMS)
 
 mkdir -p "$root/dist"
