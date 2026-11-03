@@ -1,7 +1,8 @@
 #!/bin/bash
 # Installs the BigchainDB node fork from the release bundle this script sits in: a Python 3.12 venv with the
 # tested dependency set (requirements-py312.txt) and the three wheels, all from wheels/, offline.
-# Usage: ./install.sh [venv directory]      (default /home/bigchaindb/venv; an existing venv there is replaced)
+# Usage: ./install.sh [venv directory]      (default /home/bigchaindb/venv; must not exist yet)
+# Upgrades install into a new versioned directory and switch a symlink afterwards; nothing is ever deleted here.
 # Requires Ubuntu 24.04 on x86_64 with python3.12 and its venv module (apt package python3.12-venv).
 # Writes nothing but the venv (owned by user bigchaindb when run as root and that user exists). systemd units,
 # MongoDB and Tendermint are the node recipe's job.
@@ -16,13 +17,10 @@ fail() { echo "install.sh: $*" >&2; exit 1; }
 command -v python3.12 >/dev/null || fail 'python3.12 not found (apt-get install python3.12 python3.12-venv)'
 python3.12 -c 'import ensurepip' 2>/dev/null || fail 'python3.12 has no venv module (apt-get install python3.12-venv)'
 [[ -d $(dirname "$venv") ]] || fail "parent directory of $venv does not exist (create the bigchaindb user first)"
-if [[ -e $venv && ! -f $venv/pyvenv.cfg ]]; then
-  fail "$venv exists and is not a virtualenv (no pyvenv.cfg); refusing to delete it"
-fi
+[[ ! -e $venv && ! -L $venv ]] || fail "$venv already exists; install into a new directory (e.g. $venv-<version>) and switch the symlink afterwards"
 
 (cd "$bundle" && sha256sum --quiet -c SHA256SUMS) || fail 'bundle checksums do not match'
 
-rm -rf "$venv"
 python3.12 -m venv "$venv"
 "$venv/bin/pip" install --quiet --no-index --find-links "$bundle/wheels" -r "$bundle/requirements-py312.txt"
 "$venv/bin/pip" install --quiet --no-index --no-deps --find-links "$bundle/wheels" \
