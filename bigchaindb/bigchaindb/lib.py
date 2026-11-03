@@ -382,7 +382,7 @@ class BigchainDB(object):
             try:
                 transaction = Transaction.from_dict(tx)
             except SchemaValidationError as e:
-                logger.warning('Invalid transaction schema: %s', e.__cause__.message)
+                logger.warning('Invalid transaction schema: %s', getattr(e.__cause__, 'message', e.__cause__))
                 return False
             except ValidationError as e:
                 logger.warning('Invalid transaction (%s): %s', type(e).__name__, e)

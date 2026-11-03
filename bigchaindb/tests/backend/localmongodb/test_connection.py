@@ -112,3 +112,47 @@ def test_connection_with_credentials(mock_client):
     assert mock_client.call_args.kwargs['username'] == 'theplague'
     assert mock_client.call_args.kwargs['password'] == 'secret'
     assert mock_client.call_args.kwargs['authSource'] == conn.dbname
+
+
+@mock.patch('pymongo.MongoClient')
+def test_connection_with_tls_certificates(mock_client):
+    from bigchaindb.backend import connect
+
+    conn = connect(ca_cert='/certs/ca.pem', certfile='/certs/client.pem', keyfile='/certs/client.pem',
+                   keyfile_passphrase='pass', crlfile='/certs/crl.pem', login='CN=node', password=None)
+    conn.conn
+
+    assert mock_client.call_count == 1
+    kwargs = mock_client.call_args.kwargs
+    assert kwargs['tls'] is True
+    assert kwargs['tlsCAFile'] == '/certs/ca.pem'
+    assert kwargs['tlsCertificateKeyFile'] == '/certs/client.pem'
+    assert kwargs['tlsCertificateKeyFilePassword'] == 'pass'
+    assert kwargs['tlsCRLFile'] == '/certs/crl.pem'
+    assert kwargs['authMechanism'] == 'MONGODB-X509'
+    assert kwargs['username'] == 'CN=node'
+    assert 'ssl_ca_certs' not in kwargs
+
+
+@mock.patch('pymongo.MongoClient')
+def test_connection_with_tls_certificates_without_login(mock_client):
+    from bigchaindb.backend import connect
+
+    conn = connect(ca_cert='/certs/ca.pem', certfile='/certs/client.pem', keyfile='/certs/client.pem',
+                   crlfile='/certs/crl.pem')
+    conn.conn
+
+    kwargs = mock_client.call_args.kwargs
+    assert kwargs['tls'] is True
+    assert 'authMechanism' not in kwargs
+    assert 'username' not in kwargs
+
+
+def test_connection_with_separate_key_file_is_a_configuration_error():
+    from bigchaindb.backend import connect
+    from bigchaindb.common.exceptions import ConfigurationError
+
+    conn = connect(ca_cert='/certs/ca.pem', certfile='/certs/client.crt', keyfile='/certs/client.key',
+                   crlfile='/certs/crl.pem')
+    with pytest.raises(ConfigurationError):
+        conn.conn

@@ -29,9 +29,9 @@ setup(
     keywords='blockchain tendermint abci',
     packages=find_packages(exclude=['tests']),
     install_requires=[
-        "protobuf==3.6.1",
-        "gevent==20.6.2",
-        "colorlog==4.1.0",
+        "protobuf==7.36.2",
+        "gevent==26.9.0",
+        "colorlog==6.12.0",
     ],
     tests_require=[
         "pytest==5.3.5",

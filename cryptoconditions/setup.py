@@ -71,10 +71,10 @@ setup(
     packages=find_packages(exclude=['tests*', 'examples']),
 
     install_requires=[
-        'base58~=1.0.0',
-        'PyNaCl~=1.1.0',
-        'pyasn1~=0.4',
-        'cryptography~=2.3.1',
+        'base58==2.1.1',
+        'PyNaCl==1.6.2',
+        'pyasn1==0.6.5',
+        'cryptography==50.0.2',
     ],
     setup_requires=['pytest-runner'],
     tests_require=tests_require,

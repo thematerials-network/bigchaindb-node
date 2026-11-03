@@ -14,6 +14,7 @@ Attributes:
 from collections import namedtuple
 from copy import deepcopy
 from functools import reduce, lru_cache
+import sys
 import rapidjson
 
 import base58
@@ -480,6 +481,22 @@ class Output(object):
         except ValueError:
             raise AmountError('Invalid amount: %s' % data['amount'])
         return cls(fulfillment, data['public_keys'], amount)
+
+
+def has_subnormal_float(value):
+    """True if any float in the JSON-like value is subnormal (0 < |x| < sys.float_info.min)."""
+    # Iterative: the nesting depth at which validation starts raising RecursionError must not move.
+    pending = [value]
+    while pending:
+        item = pending.pop()
+        if isinstance(item, float):
+            if item != 0.0 and abs(item) < sys.float_info.min:
+                return True
+        elif isinstance(item, dict):
+            pending.extend(item.values())
+        elif isinstance(item, list):
+            pending.extend(item)
+    return False
 
 
 class Transaction(object):
@@ -1182,7 +1199,9 @@ class Transaction(object):
         tx_body_serialized = Transaction._to_str(tx_body)
         valid_tx_id = Transaction._to_hash(tx_body_serialized)
 
-        if proposed_tx_id != valid_tx_id:
+        # Subnormal floats: the 2.2.2 nodes run with flush-to-zero (gevent 20.6.2), where they re-serialize
+        # as 0.0 and the id check fails; the same rejection keeps consensus identical.
+        if proposed_tx_id != valid_tx_id or has_subnormal_float(tx_body):
             err_msg = ("The transaction's id '{}' isn't equal to "
                        "the hash of its body, i.e. it's not valid.")
             raise InvalidHash(err_msg.format(proposed_tx_id))

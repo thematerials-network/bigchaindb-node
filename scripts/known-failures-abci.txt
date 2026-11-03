@@ -1,2 +1,1 @@
 # Failures expected on both prod's stack and the fork; anything else fails scripts/test-in-docker.sh.
-tests/web/test_transactions.py::test_post_create_transaction_with_invalid_signature

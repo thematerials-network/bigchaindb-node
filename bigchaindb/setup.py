@@ -13,8 +13,8 @@ For full docs visit https://docs.bigchaindb.com
 import sys
 from setuptools import setup, find_packages
 
-if sys.version_info < (3, 6):
-    sys.exit('Please use Python version 3.6 or higher.')
+if sys.version_info < (3, 12):
+    sys.exit('Please use Python version 3.12 or higher.')
 
 # get the version
 version = {}
@@ -69,27 +69,24 @@ tests_require = [
     'tox',
 ] + docs_require
 
+# The tested set: every version equals requirements-py312.txt (Python 3.12).
 install_requires = [
-    'aiohttp==3.6.2',
+    'aiohttp==3.14.5',
     'bigchaindb-abci==1.0.5',
     'cryptoconditions==0.8.0',
-    'flask-cors==3.0.8',
-    'flask-restful==0.3.8',
-    'flask==1.1.2',
-    'gunicorn==20.0.4',
-    'jsonschema==3.2.0',
+    'flask-cors==6.0.5',
+    'flask-restful==0.3.10',
+    'flask==3.1.3',
+    'gunicorn==26.2.0',
+    'jsonschema==4.26.0',
     'logstats==0.3.0',
-    'packaging>=20.0.0',  # Dockerfile-alpine required for pkg has ver 20.0.4
-    # TODO Consider not installing the db drivers, or putting them in extras.
-    'pymongo==3.7.2',
-    'python-rapidjson==0.9.1',
-    'pyyaml==5.3.1',
-    'requests==2.23.0',
-    'setproctitle==1.1.10',
+    'packaging==26.3',
+    'pymongo==4.19.0',
+    'python-rapidjson==1.25',
+    'pyyaml==6.0.3',
+    'requests==2.34.2',
+    'setproctitle==1.3.8',
 ]
-
-if sys.version_info < (3, 6):
-    install_requires.append('pysha3~=1.0.2')
 
 setup(
     name='BigchainDB',
@@ -110,7 +107,7 @@ setup(
     author_email='contact@ipdb.global',
     license='Apache Software License 2.0',
     zip_safe=False,
-    python_requires='>=3.6',
+    python_requires='>=3.12',
     classifiers=[
         'Development Status :: 4 - Beta',
         'Intended Audience :: Developers',
@@ -120,9 +117,7 @@ setup(
         'Natural Language :: English',
         'License :: OSI Approved :: Apache Software License',
         'Programming Language :: Python :: 3 :: Only',
-        'Programming Language :: Python :: 3.6',
-        'Programming Language :: Python :: 3.7',
-        'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.12',
         'Operating System :: MacOS :: MacOS X',
         'Operating System :: POSIX :: Linux',
     ],

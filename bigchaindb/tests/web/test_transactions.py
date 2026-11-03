@@ -457,3 +457,14 @@ def test_post_transaction_invalid_mode(client):
     assert '400 BAD REQUEST' in response.status
     assert 'Mode must be "async", "sync" or "commit"' ==\
            json.loads(response.data.decode('utf8'))['message']['mode']
+
+
+def test_post_transaction_with_invalid_json_reports_the_decoder_error():
+    from bigchaindb.web import server
+    from bigchaindb.lib import BigchainDB
+
+    # Not the `client` fixture: its app runs in debug mode, where Flask itself keeps the decoder error.
+    client = server.create_app(debug=False, bigchaindb_factory=BigchainDB).test_client()
+    res = client.post(TX_ENDPOINT, data='{not json')
+    assert res.status_code == 400
+    assert res.json['message'].startswith('Failed to decode JSON object: Expecting property name')

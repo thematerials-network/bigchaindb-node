@@ -4,8 +4,6 @@
 # Code is Apache-2.0 and docs are CC-BY-4.0
 
 import logging
-from ssl import CERT_REQUIRED
-
 import pymongo
 
 from bigchaindb.backend.connection import Connection
@@ -109,21 +107,24 @@ class LocalMongoDBConnection(Connection):
                                              **MONGO_OPTS)
             else:
                 logger.info('Connecting to MongoDB over TLS/SSL...')
+                # pymongo 4 reads the client certificate and its key from one PEM file.
+                if self.keyfile != self.certfile:
+                    raise ConfigurationError('database.keyfile must equal database.certfile: '
+                                             'one PEM file holding the client certificate and its key')
+                credentials = {}
+                if self.login is not None:
+                    credentials = {'username': self.login, 'authMechanism': 'MONGODB-X509'}
                 client = pymongo.MongoClient(self.host,
                                              self.port,
                                              replicaset=self.replicaset,
                                              serverselectiontimeoutms=self.connection_timeout,
-                                             ssl=self.ssl,
-                                             ssl_ca_certs=self.ca_cert,
-                                             ssl_certfile=self.certfile,
-                                             ssl_keyfile=self.keyfile,
-                                             ssl_pem_passphrase=self.keyfile_passphrase,
-                                             ssl_crlfile=self.crlfile,
-                                             ssl_cert_reqs=CERT_REQUIRED,
+                                             tls=True,
+                                             tlsCAFile=self.ca_cert,
+                                             tlsCertificateKeyFile=self.certfile,
+                                             tlsCertificateKeyFilePassword=self.keyfile_passphrase,
+                                             tlsCRLFile=self.crlfile,
+                                             **credentials,
                                              **MONGO_OPTS)
-                if self.login is not None:
-                    client[self.dbname].authenticate(self.login,
-                                                     mechanism='MONGODB-X509')
 
             return client
 

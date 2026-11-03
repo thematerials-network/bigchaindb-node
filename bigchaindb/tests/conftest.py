@@ -439,6 +439,77 @@ def event_loop():
     loop.close()
 
 
+# Lines of `<transaction id or *>[:<CheckTx calls to let through first>]`; read by the ABCI test process on every
+# CheckTx. Only CheckTx fails: a backend error in DeliverTx propagates and would kill the ABCI server.
+ABCI_FAILURE_FLAG = os.path.join(tempfile.gettempdir(), 'bigchaindb-tests-abci-failure')
+ABCI_FAILURE_HITS = ABCI_FAILURE_FLAG + '.hits'
+
+
+class AbciFailureFlag:
+    """Lets a test make the ABCI server's CheckTx validation raise, as if the database were unavailable."""
+
+    def fail(self, transaction_id='*', after_calls=0):
+        with open(ABCI_FAILURE_FLAG, 'a') as flag:
+            flag.write('{}:{}\n'.format(transaction_id, after_calls))
+
+    def clear(self):
+        if os.path.exists(ABCI_FAILURE_FLAG):
+            os.remove(ABCI_FAILURE_FLAG)
+
+    def hits(self):
+        """Transaction ids whose CheckTx validation was made to fail, in order, one entry per failure."""
+        if not os.path.exists(ABCI_FAILURE_HITS):
+            return []
+        with open(ABCI_FAILURE_HITS) as hits:
+            return [line.strip() for line in hits if line.strip()]
+
+    def clear_hits(self):
+        if os.path.exists(ABCI_FAILURE_HITS):
+            os.remove(ABCI_FAILURE_HITS)
+
+
+@pytest.fixture
+def abci_failure():
+    flag = AbciFailureFlag()
+    flag.clear()
+    flag.clear_hits()
+    yield flag
+    flag.clear()
+    flag.clear_hits()
+
+
+def abci_test_bigchaindb():
+    from collections import Counter
+    from bigchaindb import BigchainDB
+    from bigchaindb.backend.exceptions import ConnectionError
+
+    check_tx = object()
+
+    class AbciTestBigchainDB(BigchainDB):
+        check_tx_calls = Counter()
+
+        def is_valid_transaction(self, tx, current_transactions=check_tx):
+            if current_transactions is check_tx:
+                transaction_id = tx.get('id') if isinstance(tx, dict) else None
+                self.check_tx_calls[transaction_id] += 1
+                if self.failure_requested(transaction_id):
+                    with open(ABCI_FAILURE_HITS, 'a') as hits:
+                        hits.write('{}\n'.format(transaction_id))
+                    raise ConnectionError('simulated database failure for {}'.format(transaction_id))
+                return super().is_valid_transaction(tx)
+            return super().is_valid_transaction(tx, current_transactions)
+
+        def failure_requested(self, transaction_id):
+            if not os.path.exists(ABCI_FAILURE_FLAG):
+                return False
+            with open(ABCI_FAILURE_FLAG) as flag:
+                rules = [line.strip().split(':') for line in flag if line.strip()]
+            return any(pattern in ('*', transaction_id) and self.check_tx_calls[transaction_id] > int(after_calls)
+                       for pattern, after_calls in rules)
+
+    return AbciTestBigchainDB()
+
+
 @pytest.fixture(scope='session')
 def abci_server():
     from abci.server import ABCIServer
@@ -446,7 +517,7 @@ def abci_server():
     from bigchaindb.core import App
     from bigchaindb.utils import Process
 
-    app = ABCIServer(app=App(types_v0_31_5))
+    app = ABCIServer(app=App(types_v0_31_5, bigchaindb=abci_test_bigchaindb()))
     abci_proxy = Process(name='ABCI', target=app.run)
     yield abci_proxy.start()
     abci_proxy.terminate()

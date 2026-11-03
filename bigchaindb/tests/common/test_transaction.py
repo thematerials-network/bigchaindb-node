@@ -1055,3 +1055,48 @@ def test_spent_outputs_property(signed_transfer_tx):
     assert spent_output['transaction_id'] == tx['inputs'][0]['fulfills']['transaction_id']
     assert spent_output['output_index'] == tx['inputs'][0]['fulfills']['output_index']
     # assert spent_output._asdict() == tx['inputs'][0]['fulfills']
+
+
+def signed_create_with_metadata(user_pub, user_priv, metadata):
+    from bigchaindb.common.transaction import Transaction
+
+    return Transaction.create([user_pub], [([user_pub], 1)], metadata=metadata).sign([user_priv]).to_dict()
+
+
+# Prod's ABCI process runs with flush-to-zero (gevent 20.6.2), so subnormal floats re-serialize as 0.0 there
+# and the id check fails. The fork rejects them explicitly with the same error.
+@mark.parametrize('metadata', [
+    {'x': 5e-324},
+    {'x': -5e-324},
+    {'x': 1e-310},
+    {'nested': [1, {'y': [2.2250738585072009e-308]}]},
+    {'x': {'$numberDouble': 1e-310}},
+])
+def test_validate_id_rejects_subnormal_floats(user_pub, user_priv, metadata):
+    from bigchaindb.common.transaction import Transaction
+    from bigchaindb.common.exceptions import InvalidHash
+
+    tx = signed_create_with_metadata(user_pub, user_priv, metadata)
+    with raises(InvalidHash) as excinfo:
+        Transaction.validate_id(tx)
+    assert str(excinfo.value) == ("The transaction's id '{}' isn't equal to the hash of its body, "
+                                  "i.e. it's not valid.".format(tx['id']))
+
+
+@mark.parametrize('metadata', [
+    {'x': 0.0},
+    {'x': -0.0},
+    {'x': 1e-300},
+    {'x': 2.2250738585072014e-308},
+    {'x': 1},
+    {'x': 0},
+    {'x': True},
+    {'x': False},
+    {'x': '5e-324'},
+    {'x': None},
+    {'x': [1.5, -2.5, 1e308]},
+])
+def test_validate_id_accepts_normal_values(user_pub, user_priv, metadata):
+    from bigchaindb.common.transaction import Transaction
+
+    Transaction.validate_id(signed_create_with_metadata(user_pub, user_priv, metadata))
