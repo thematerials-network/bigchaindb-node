@@ -49,9 +49,10 @@ class Fulfillment(metaclass=ABCMeta):
             Fulfillment: :class:`~.Fulfillment` instance.
 
         """
+        # RecursionError: pyasn1 0.4-0.6 recurse forever in the repr() of the error for some inputs.
         try:
             asn1_obj, _ = der_decode(data, asn1Spec=Asn1Fulfillment())
-        except (SubstrateUnderrunError, PyAsn1Error, TypeError) as exc:
+        except (SubstrateUnderrunError, PyAsn1Error, TypeError, RecursionError) as exc:
             raise ASN1DecodeError('Failed to decode fulfillment.') from exc
         asn1_dict = nat_encode(asn1_obj)
         return Fulfillment.from_asn1_dict(asn1_dict)

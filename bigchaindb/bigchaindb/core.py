@@ -10,9 +10,11 @@ import logging
 import sys
 
 from abci.application import BaseApplication
+from pymongo.errors import PyMongoError
 from abci import CodeTypeOk
 
 from bigchaindb import BigchainDB
+from bigchaindb.backend.exceptions import BackendError
 from bigchaindb.elections.election import Election
 from bigchaindb.version import __tm_supported_versions__
 from bigchaindb.utils import tendermint_version_is_compatible
@@ -24,6 +26,7 @@ from bigchaindb.events import EventTypes, Event
 
 
 CodeTypeError = 1
+CodeTypeInternalError = 2
 logger = logging.getLogger(__name__)
 
 
@@ -127,6 +130,11 @@ class App(BaseApplication):
             r.last_block_app_hash = b''
         return r
 
+    def log_unexpected_error(self, method, decoded_transaction):
+        """Log the current exception; the caller answers Tendermint with CodeTypeInternalError."""
+        transaction_id = decoded_transaction.get('id') if isinstance(decoded_transaction, dict) else None
+        logger.exception('%s: unexpected error, transaction id %s', method, transaction_id)
+
     def check_tx(self, raw_transaction):
         """Validate the transaction before entry into
         the mempool.
@@ -138,8 +146,14 @@ class App(BaseApplication):
         self.abort_if_abci_chain_is_not_synced()
 
         logger.debug('check_tx: %s', raw_transaction)
-        transaction = decode_transaction(raw_transaction)
-        if self.bigchaindb.is_valid_transaction(transaction):
+        transaction = None
+        try:
+            transaction = decode_transaction(raw_transaction)
+            valid = self.bigchaindb.is_valid_transaction(transaction)
+        except Exception:
+            self.log_unexpected_error('check_tx', transaction)
+            return self.abci.ResponseCheckTx(code=CodeTypeInternalError)
+        if valid:
             logger.debug('check_tx: VALID')
             return self.abci.ResponseCheckTx(code=CodeTypeOk)
         else:
@@ -173,8 +187,17 @@ class App(BaseApplication):
         self.abort_if_abci_chain_is_not_synced()
 
         logger.debug('deliver_tx: %s', raw_transaction)
-        transaction = self.bigchaindb.is_valid_transaction(
-            decode_transaction(raw_transaction), self.block_transactions)
+        decoded = None
+        try:
+            decoded = decode_transaction(raw_transaction)
+            transaction = self.bigchaindb.is_valid_transaction(decoded, self.block_transactions)
+        except (BackendError, PyMongoError):
+            # Not deterministic: rejecting here would commit an app hash the other validators do not have.
+            # Raw pymongo errors escape connection.run() through cursors consumed lazily by the caller.
+            raise
+        except Exception:
+            self.log_unexpected_error('deliver_tx', decoded)
+            return self.abci.ResponseDeliverTx(code=CodeTypeInternalError)
 
         if not transaction:
             logger.debug('deliver_tx: INVALID')

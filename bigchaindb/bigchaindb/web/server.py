@@ -11,8 +11,10 @@ The application is implemented in Flask and runs using Gunicorn.
 import copy
 import multiprocessing
 
+import flask
 from flask import Flask
 from flask_cors import CORS
+from werkzeug.exceptions import BadRequest
 import gunicorn.app.base
 
 from bigchaindb import utils
@@ -60,6 +62,15 @@ class StandaloneApplication(gunicorn.app.base.BaseApplication):
         return self.application
 
 
+class Request(flask.Request):
+    """Answers a request with undecodable JSON as werkzeug 2.0 did: 400 with the decoder error."""
+
+    def on_json_loading_failed(self, e):
+        if e is None:
+            return super().on_json_loading_failed(e)
+        raise BadRequest('Failed to decode JSON object: {0}'.format(e))
+
+
 def create_app(*, debug=False, threads=1, bigchaindb_factory=None):
     """Return an instance of the Flask application.
 
@@ -75,6 +86,7 @@ def create_app(*, debug=False, threads=1, bigchaindb_factory=None):
         bigchaindb_factory = BigchainDB
 
     app = Flask(__name__)
+    app.request_class = Request
     app.wsgi_app = StripContentTypeMiddleware(app.wsgi_app)
 
     CORS(app)

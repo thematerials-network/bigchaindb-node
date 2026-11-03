@@ -14,6 +14,7 @@ from bigchaindb.backend.localmongodb import query
 from bigchaindb.common.crypto import generate_key_pair
 from bigchaindb.core import (CodeTypeOk,
                              CodeTypeError,
+                             CodeTypeInternalError,
                              rollback)
 from bigchaindb.elections.election import Election
 from bigchaindb.lib import Block
@@ -295,6 +296,130 @@ def test_deliver_tx__rapidjson_only_rejection_is_error(a, b, field, value):
     result = app.deliver_tx(rapidjson_rejected_tx_bytes(field, value))
     assert result.code == CodeTypeError
     assert app.block_txn_ids == []
+
+
+def signed_create_tx():
+    from bigchaindb.models import Transaction
+    from bigchaindb.common.crypto import generate_key_pair
+
+    alice = generate_key_pair()
+    return Transaction.create([alice.public_key], [([alice.public_key], 1)]).sign([alice.private_key])
+
+
+def failing_connection_run(query):
+    from bigchaindb.backend.exceptions import ConnectionError
+    raise ConnectionError('database unavailable')
+
+
+def test_check_tx__backend_error_is_internal_error(a, b, monkeypatch, mocker):
+    tx = signed_create_tx()
+    app = App(a, b)
+    monkeypatch.setattr(b.connection, 'run', failing_connection_run)
+    log_exception = mocker.patch('bigchaindb.core.logger.exception')
+    result = app.check_tx(encode_tx_to_bytes(tx))
+    assert result.code == CodeTypeInternalError
+    log_exception.assert_called_once_with('%s: unexpected error, transaction id %s', 'check_tx', tx.id)
+
+
+def test_check_tx__succeeds_again_once_the_backend_recovers(a, b, monkeypatch):
+    tx = signed_create_tx()
+    app = App(a, b)
+    run = b.connection.run
+    monkeypatch.setattr(b.connection, 'run', failing_connection_run)
+    assert app.check_tx(encode_tx_to_bytes(tx)).code == CodeTypeInternalError
+    monkeypatch.setattr(b.connection, 'run', run)
+    assert app.check_tx(encode_tx_to_bytes(tx)).code == CodeTypeOk
+
+
+def test_deliver_tx__backend_error_propagates(a, b, monkeypatch, mocker):
+    from bigchaindb.backend.exceptions import ConnectionError
+
+    tx = signed_create_tx()
+    app = App(a, b)
+    app.begin_block(a.RequestBeginBlock())
+    monkeypatch.setattr(b.connection, 'run', failing_connection_run)
+    log_exception = mocker.patch('bigchaindb.core.logger.exception')
+    with pytest.raises(ConnectionError):
+        app.deliver_tx(encode_tx_to_bytes(tx))
+    assert app.block_txn_ids == []
+    log_exception.assert_not_called()
+
+
+def test_deliver_tx__raw_driver_error_from_a_cursor_propagates(a, b, init_chain_request, monkeypatch, mocker):
+    # Query results are cursors consumed outside connection.run(), so pymongo errors escape unwrapped.
+    import pymongo.errors
+    from bigchaindb.models import Transaction
+
+    def failing_cursor(*args, **kwargs):
+        raise pymongo.errors.AutoReconnect('connection lost while iterating')
+        yield
+
+    app = App(a, b)
+    app.init_chain(init_chain_request)
+    app.begin_block(types.RequestBeginBlock())
+    alice, bob = generate_key_pair(), generate_key_pair()
+    create = Transaction.create([alice.public_key], [([alice.public_key], 1)]).sign([alice.private_key])
+    assert app.deliver_tx(encode_tx_to_bytes(create)).code == CodeTypeOk
+    transfer = Transaction.transfer(create.to_inputs(), [([bob.public_key], 1)], asset_id=create.id)\
+                          .sign([alice.private_key])
+    monkeypatch.setattr('bigchaindb.backend.query.get_spent', failing_cursor)
+    log_exception = mocker.patch('bigchaindb.core.logger.exception')
+    with pytest.raises(pymongo.errors.AutoReconnect):
+        app.deliver_tx(encode_tx_to_bytes(transfer))
+    assert app.block_txn_ids == [create.id]
+    log_exception.assert_not_called()
+
+
+# Finding E: inputs no layer rejects; they raised through CheckTx and DeliverTx and killed the ABCI connection.
+UNDECODABLE_INPUTS = [
+    pytest.param(b'not json', id='not-json'),
+    pytest.param(b'', id='empty'),
+    pytest.param(b'\xff\xfe', id='invalid-utf8'),
+    pytest.param(b'[]', id='json-array'),
+    pytest.param(b'"a string"', id='json-string'),
+    pytest.param(b'"\\ud800"', id='lone-surrogate'),
+    pytest.param(b'{"a":' * 2000 + b'1' + b'}' * 2000, id='nesting-2000'),
+]
+
+
+@pytest.mark.parametrize('raw', UNDECODABLE_INPUTS)
+def test_check_tx__undecodable_input_is_internal_error(a, b, raw, mocker):
+    app = App(a, b)
+    log_exception = mocker.patch('bigchaindb.core.logger.exception')
+    assert app.check_tx(raw).code == CodeTypeInternalError
+    log_exception.assert_called_once_with('%s: unexpected error, transaction id %s', 'check_tx', None)
+
+
+@pytest.mark.parametrize('raw', UNDECODABLE_INPUTS)
+def test_deliver_tx__undecodable_input_is_internal_error(a, b, raw):
+    app = App(a, b)
+    app.begin_block(a.RequestBeginBlock())
+    assert app.deliver_tx(raw).code == CodeTypeInternalError
+    assert app.block_txn_ids == []
+
+
+def test_check_tx__bad_output_index_is_error(a, b, init_chain_request):
+    from bigchaindb.models import Transaction
+    from bigchaindb.common.crypto import generate_key_pair
+
+    alice = generate_key_pair()
+    create_tx = Transaction.create([alice.public_key], [([alice.public_key], 1)]).sign([alice.private_key])
+    app = App(a, b)
+    app.init_chain(init_chain_request)
+    app.begin_block(a.RequestBeginBlock())
+    assert app.deliver_tx(encode_tx_to_bytes(create_tx)).code == CodeTypeOk
+    app.end_block(a.RequestEndBlock(height=1))
+    app.commit()
+
+    transfer_tx = Transaction.transfer(create_tx.to_inputs(), [([alice.public_key], 1)],
+                                       asset_id=create_tx.id).sign([alice.private_key])
+    transfer = transfer_tx.to_dict()
+    transfer['inputs'][0]['fulfills']['output_index'] = 5
+    transfer['id'] = None
+    transfer['id'] = Transaction._to_hash(Transaction._to_str(transfer))
+    result = app.check_tx(json.dumps(transfer).encode('utf8'))
+    assert result.code in (CodeTypeError, CodeTypeInternalError)
+    assert app.check_tx(encode_tx_to_bytes(signed_create_tx())).code == CodeTypeOk
 
 
 def test_deliver_tx__valid_create_updates_db_and_emits_event(a, b, init_chain_request):

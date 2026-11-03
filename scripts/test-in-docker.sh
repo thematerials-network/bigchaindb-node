@@ -1,6 +1,6 @@
 #!/bin/bash
 # Runs the BigchainDB test suite on Linux in Docker.
-# Usage: scripts/test-in-docker.sh <arm64|amd64> <non-abci|abci>
+# Usage: scripts/test-in-docker.sh <arm64|amd64> <non-abci|abci>     (K=<pytest -k expression> narrows the run)
 set -euo pipefail
 
 arch=$1
@@ -12,6 +12,7 @@ network=$prefix-net
 mkdir -p "$results"
 
 cleanup() {
+  docker logs "$prefix-tendermint" > "$results/$prefix-tendermint.log" 2>&1 || true
   docker rm -f "$prefix-tests" "$prefix-mongodb" "$prefix-tendermint" >/dev/null 2>&1 || true
   docker network rm "$network" >/dev/null 2>&1 || true
 }
@@ -23,9 +24,10 @@ docker run -d --name "$prefix-mongodb" --network "$network" --network-alias mong
 
 if [[ $suite == abci ]]; then
   marker=abci
+  # Block max_bytes 64 kB: tests/tendermint/test_check_tx_integration.py needs two transactions that fit one block only one at a time.
   docker run -d --name "$prefix-tendermint" --network "$network" --network-alias tendermint \
     --platform linux/amd64 --restart always --entrypoint sh tendermint/tendermint:v0.31.5 \
-    -c 'tendermint init && tendermint node --consensus.create_empty_blocks=false --proxy_app=tcp://bigchaindb:26658' >/dev/null
+    -c 'tendermint init && sed -i "s/\"max_bytes\": \"22020096\"/\"max_bytes\": \"65536\"/" /tendermint/config/genesis.json && grep -q 65536 /tendermint/config/genesis.json && tendermint node --consensus.create_empty_blocks=false --proxy_app=tcp://bigchaindb:26658' >/dev/null
 else
   marker='not abci'
 fi
@@ -41,7 +43,7 @@ docker run --name "$prefix-tests" --network "$network" --network-alias bigchaind
   -e BIGCHAINDB_SERVER_BIND=0.0.0.0:9984 \
   -e BIGCHAINDB_WSSERVER_HOST=0.0.0.0 \
   -e BIGCHAINDB_WSSERVER_ADVERTISED_HOST=bigchaindb \
-  -e "MARKER=$marker" -e "LOG=/results/$prefix.log" \
+  -e "MARKER=$marker" -e "K=${K:-}" -e "LOG=/results/$prefix.log" \
   python:3.12-slim bash -c '
     set -euo pipefail
     cp -a /src/bigchaindb /src/cryptoconditions /src/bigchaindb-abci /src/requirements-py312.txt /tmp/
@@ -54,7 +56,7 @@ docker run --name "$prefix-tests" --network "$network" --network-alias bigchaind
     # No Hypothesis deadline: timing under amd64 emulation is not a test result.
     printf "from hypothesis import settings\nsettings.register_profile(\"no_deadline\", deadline=None)\nsettings.load_profile(\"no_deadline\")\n" > /tmp/no_deadline.py
     cd /tmp/bigchaindb
-    PYTHONPATH=/tmp python -m pytest -p no:cacheprovider -p no_deadline -q -rfEs -W ignore -m "$MARKER" >> "$LOG" 2>&1 || true
+    PYTHONPATH=/tmp python -m pytest -p no:cacheprovider -p no_deadline -q -rfEs -W ignore -m "$MARKER" -k "$K" >> "$LOG" 2>&1 || true
     tail -1 "$LOG"
   '
 
