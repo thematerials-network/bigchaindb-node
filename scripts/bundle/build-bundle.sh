@@ -17,7 +17,7 @@ trap 'rm -rf "$work"' EXIT
 "$python" -c 'import sys; assert sys.version_info[:2] == (3, 12), sys.version' || exit 1
 
 "$python" -m venv "$work/venv"
-"$work/venv/bin/pip" install -q --disable-pip-version-check -r "$root/requirements-py312.txt"
+"$root/scripts/install-requirements.sh" "$work/venv/bin/pip" "$root/requirements-py312.txt" -q --disable-pip-version-check
 mkdir -p "$work/$name/wheels"
 # Built from a copy: setuptools rewrites the committed sdist egg-info files in place.
 mkdir "$work/src" && cp -a "$root/cryptoconditions" "$root/bigchaindb-abci" "$root/bigchaindb" "$work/src/"
@@ -26,7 +26,9 @@ mkdir "$work/src" && cp -a "$root/cryptoconditions" "$root/bigchaindb-abci" "$ro
 # --no-build-isolation: sdist-only packages build with the venv's setuptools (pip's isolated build subprocess segfaults under qemu).
 "$work/venv/bin/pip" wheel -q --disable-pip-version-check --no-deps --no-build-isolation -w "$work/$name/wheels" -r "$root/requirements-py312.txt"
 
-cp "$root/install.sh" "$root/requirements-py312.txt" "$root/NOTICE" "$work/$name/"
+cp "$root/install.sh" "$root/NOTICE" "$work/$name/"
+# Pins without the PyPI hashes: wheels built here from sdists (logstats) match none, and SHA256SUMS covers wheels/.
+sed -e 's/ \\$//' -e '/^ *--hash=/d' "$root/requirements-py312.txt" > "$work/$name/requirements-py312.txt"
 # BUNDLE: key=value lines. install.sh pins the three packages from it; the node recipe reads version=.
 wheel_version() { basename "$(ls "$work/$name/wheels/$1"-*.whl)" | cut -d- -f2; }
 {

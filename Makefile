@@ -3,15 +3,18 @@ ARCH ?= arm64
 PYTHON ?= python3.12
 VENV ?= .venv
 
-.PHONY: help venv wheels bundle test-install images image-new image-old image-iproute2 test test-non-abci test-abci test-old diff diff-corpus diff-http diff-ws pb2 clean
+.PHONY: help venv lock wheels bundle test-install test-bundle images image-new image-old image-iproute2 test test-non-abci test-abci test-old diff diff-corpus diff-http diff-ws pb2 clean
 
 help:
 	@grep -E '^[a-z0-9-]+:.*## ' $(MAKEFILE_LIST) | sed -E 's/:.*## /\t/' | expand -t 18
 
 venv: ## Local Python 3.12 venv with the pinned dependencies and the three packages (editable)
 	$(PYTHON) -m venv $(VENV)
-	$(VENV)/bin/pip install -q -r requirements-py312.txt
+	scripts/install-requirements.sh $(VENV)/bin/pip requirements-py312.txt -q
 	$(VENV)/bin/pip install -q --no-deps --no-build-isolation -e ./cryptoconditions -e ./bigchaindb-abci -e ./bigchaindb
+
+lock: ## Rewrite the PyPI hashes in requirements-py312.txt for its pinned versions (needs network)
+	scripts/lock-hashes.py
 
 # Built from a copy: setuptools rewrites the committed sdist egg-info files in place.
 wheels: ## Build the three wheels into dist/ (needs make venv)
@@ -28,10 +31,14 @@ bundle: ## dist/bigchaindb-node-*-ubuntu24.04-amd64.tar.gz, built in an ubuntu:2
 test-install: ## Install the newest bundle in dist/ with install.sh in a blank ubuntu:24.04 container, offline
 	scripts/bundle/test-install.sh "$$(ls -t dist/bigchaindb-node-*-ubuntu24.04-amd64.tar.gz | head -1)"
 
+test-bundle: ## Fork test suites against the venv install.sh builds from the newest bundle in dist/ (amd64)
+	BUNDLE="$$(ls -t dist/bigchaindb-node-*-ubuntu24.04-amd64.tar.gz | head -1)" scripts/test-in-docker.sh amd64 non-abci
+	BUNDLE="$$(ls -t dist/bigchaindb-node-*-ubuntu24.04-amd64.tar.gz | head -1)" scripts/test-in-docker.sh amd64 abci
+
 images: image-new image-old image-iproute2 ## Build every Docker image the test harness uses
 
 image-new: ## bdb-new-env:$(ARCH): the fork's dependencies on Python 3.12
-	cp requirements-py312.txt scripts/new-env/requirements-py312.txt
+	cp requirements-py312.txt scripts/install-requirements.sh scripts/new-env/
 	docker build -q --platform linux/$(ARCH) -t bdb-new-env:$(ARCH) scripts/new-env
 
 image-old: ## bdb-old-env:amd64: prod's exact stack (Python 3.9.25, prod freeze), ~10 min

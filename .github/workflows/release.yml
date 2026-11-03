@@ -1,6 +1,6 @@
 # Builds the Ubuntu 24.04 / Python 3.12 / amd64 bundle (scripts/bundle/build-bundle.sh), runs the fork test
-# suites (make test) and the offline install test, and attaches the bundle: as a workflow artifact on every run,
-# as release assets when a tag v* is pushed.
+# suites against the venv the bundle installs (make test-bundle) and the offline install test, and attaches the
+# bundle: as a workflow artifact on every run, as release assets when a tag v* is pushed.
 name: release
 
 on:
@@ -24,11 +24,11 @@ jobs:
           sudo apt-get install -y -qq --no-install-recommends python3.12 python3.12-venv
           python3.12 --version
 
-      - name: Test suites (make test, amd64)
-        run: make test ARCH=amd64
-
       - name: Build the bundle
         run: scripts/bundle/build-bundle.sh python3.12
+
+      - name: Test suites against the bundle (make test-bundle)
+        run: make test-bundle
 
       - name: Install the bundle offline in a blank ubuntu:24.04 container
         run: scripts/bundle/test-install.sh dist/bigchaindb-node-*-ubuntu24.04-amd64.tar.gz
