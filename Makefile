@@ -3,7 +3,7 @@ ARCH ?= arm64
 PYTHON ?= python3.12
 VENV ?= .venv
 
-.PHONY: help venv wheels images image-new image-old image-iproute2 test test-non-abci test-abci test-old diff diff-corpus diff-http diff-ws pb2 clean
+.PHONY: help venv wheels bundle test-install images image-new image-old image-iproute2 test test-non-abci test-abci test-old diff diff-corpus diff-http diff-ws pb2 clean
 
 help:
 	@grep -E '^[a-z0-9-]+:.*## ' $(MAKEFILE_LIST) | sed -E 's/:.*## /\t/' | expand -t 18
@@ -18,6 +18,15 @@ wheels: ## Build the three wheels into dist/ (needs make venv)
 	rm -rf dist && tmp=$$(mktemp -d) && cp -a cryptoconditions bigchaindb-abci bigchaindb "$$tmp/" \
 	  && $(VENV)/bin/pip wheel -q --no-deps --no-build-isolation -w dist "$$tmp/cryptoconditions" "$$tmp/bigchaindb-abci" "$$tmp/bigchaindb" \
 	  ; status=$$?; rm -rf "$$tmp"; exit $$status
+
+bundle: ## dist/bigchaindb-node-*-ubuntu24.04-amd64.tar.gz, built in an ubuntu:24.04 amd64 container (CI runs the script directly)
+	docker run --rm --platform linux/amd64 -v "$(CURDIR):/src:ro" -v "$(CURDIR)/dist:/dist" ubuntu:24.04 bash -c '\
+	  set -e; apt-get update -qq >/dev/null && apt-get install -y -qq --no-install-recommends python3.12 python3.12-venv git ca-certificates >/dev/null \
+	  && cp -a /src /tmp/src && git config --global --add safe.directory /tmp/src && cd /tmp/src && rm -rf dist \
+	  && scripts/bundle/build-bundle.sh python3.12 && cp dist/* /dist/'
+
+test-install: ## Install the newest bundle in dist/ with install.sh in a blank ubuntu:24.04 container, offline
+	scripts/bundle/test-install.sh "$$(ls -t dist/bigchaindb-node-*-ubuntu24.04-amd64.tar.gz | head -1)"
 
 images: image-new image-old image-iproute2 ## Build every Docker image the test harness uses
 

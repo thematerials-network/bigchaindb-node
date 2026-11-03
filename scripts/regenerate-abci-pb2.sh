@@ -20,6 +20,6 @@ while read -r proto; do
   # protoc maps the dot in github.com to a package level, as the original layout does.
   module=$(echo "${proto%.proto}_pb2.py" | sed 's|github\.com|github/com|')
   destination=$target/$module
-  cp "$work/out/$module" "$destination"
+  { sed -n 1p "$work/out/$module"; echo "# Modified by thematerials-network contributors, 2026; see NOTICE at the repository root."; sed 1d "$work/out/$module"; } > "$destination"
   echo "$destination"
 done < "$work/files.txt"

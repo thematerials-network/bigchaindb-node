@@ -2,6 +2,7 @@
 # BigchainDB and IPDB software contributors.
 # SPDX-License-Identifier: (Apache-2.0 AND CC-BY-4.0)
 # Code is Apache-2.0 and docs are CC-BY-4.0
+# Modified by thematerials-network contributors, 2026; see NOTICE at the repository root.
 
 """
 BigchainDB: The Blockchain Database
@@ -106,6 +107,7 @@ setup(
     author='BigchainDB Contributors',
     author_email='contact@ipdb.global',
     license='Apache Software License 2.0',
+    license_files=['LICENSE', 'LICENSES.md'],
     zip_safe=False,
     python_requires='>=3.12',
     classifiers=[

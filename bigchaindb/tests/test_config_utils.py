@@ -2,6 +2,7 @@
 # BigchainDB and IPDB software contributors.
 # SPDX-License-Identifier: (Apache-2.0 AND CC-BY-4.0)
 # Code is Apache-2.0 and docs are CC-BY-4.0
+# Modified by thematerials-network contributors, 2026; see NOTICE at the repository root.
 
 import copy
 from unittest.mock import mock_open, patch

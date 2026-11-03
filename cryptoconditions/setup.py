@@ -51,6 +51,7 @@ setup(
     author='Cryptoconditions Contributors',
     author_email='dev@bigchaindb.com',
     license='MIT',
+    license_files=['LICENSE', 'LICENSE-docs'],
     zip_safe=True,
 
     classifiers=[
