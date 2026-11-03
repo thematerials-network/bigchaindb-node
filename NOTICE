@@ -1,0 +1,20 @@
+bigchaindb-node
+Copyright 2026 thematerials-network contributors
+
+This repository combines three upstream projects, each kept under its own licence in its
+own directory, with changes made for the thematerials network's validator nodes:
+
+- bigchaindb/        BigchainDB Server 2.2.2 (https://github.com/bigchaindb/bigchaindb)
+                     Code: Apache License 2.0. Documentation: CC BY 4.0.
+                     Copyright BigchainDB GmbH and BigchainDB contributors; see bigchaindb/LICENSES.md
+                     (including the exception for bigchaindb/k8s/nginx-openresty/).
+- cryptoconditions/  cryptoconditions 0.8.0 (https://github.com/bigchaindb/cryptoconditions)
+                     Code: MIT License. Documentation: CC BY-SA 4.0.
+                     Copyright 2018 BigchainDB GmbH and all contributors; see cryptoconditions/LICENSE.
+- bigchaindb-abci/   bigchaindb-abci 1.0.5 (https://github.com/ipdb/bigchaindb-abci)
+                     Apache License 2.0. Copyright 2018 The MITRE Corporation, 2019 IPDB Foundation;
+                     see bigchaindb-abci/LICENSE.
+
+Changes made in this repository on top of those projects are licensed under the Apache License 2.0
+(LICENSE at the repository root). Modified files carry a note in their header where the Apache
+License requires one.
