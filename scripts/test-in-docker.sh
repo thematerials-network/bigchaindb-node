@@ -32,7 +32,7 @@ trap cleanup EXIT
 cleanup
 
 docker network create "$network" >/dev/null
-docker run -d --name "$prefix-mongodb" --network "$network" --network-alias mongodb mongo:8.2 >/dev/null
+docker run -d --name "$prefix-mongodb" --network "$network" --network-alias mongodb mongo:9.0.4 >/dev/null
 
 if [[ $suite == abci ]]; then
   marker=abci
