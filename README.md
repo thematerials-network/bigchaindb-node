@@ -1,8 +1,9 @@
 # BigchainDB node fork
 
 The node software of our BigchainDB network, moved to Python 3.12 and current dependencies without
-changing chain behaviour, except where listed under "Changes against prod". Three packages, kept at
-the releases prod runs:
+changing chain behaviour, except where listed under "Changes against prod". Upstream's last release
+is 2.2.2; 2.2.3 onward are this fork's releases. Three packages, whose folders keep these upstream
+bases:
 
 | Folder | Package | Upstream | Base |
 |---|---|---|---|
@@ -10,7 +11,8 @@ the releases prod runs:
 | `cryptoconditions/` | cryptoconditions 0.8.0 | `bigchaindb/cryptoconditions` | tag `v0.8.0` + PyPI sdist |
 | `bigchaindb-abci/` | bigchaindb-abci 1.0.5 | `ipdb/bigchaindb-abci` | commit `7c4760f3b2` (untagged 1.0.5) + PyPI sdist |
 
-Tendermint stays at 0.31.5 (BigchainDB 2.2.2 accepts no other version). MongoDB 8.2 in tests.
+Tendermint stays at 0.31.5 (BigchainDB 2.2.2 accepts no other version). MongoDB 9.0.4 in the test suites (what the
+node recipe installs); the old-vs-fork diff harness stays on 8.2.
 
 ## Git layout
 
@@ -31,10 +33,21 @@ Behaviour:
   through the ABCI server instead: the mempool connection dies, Tendermint exits at the next commit,
   and a block holding such an input halts the node. One exception: a database error in DeliverTx
   (`BackendError`, or a raw pymongo error escaping through a lazily consumed cursor) still
-  propagates and crashes the ABCI server as on prod, because it is not deterministic; answering code 2 would commit an app hash the other validators do not have
-  (astra review 2026-11-02). Over the HTTP API nothing changes: the web
+  propagates as on prod, because it is not deterministic; answering code 2 would commit an app hash the other validators do not have
+  (astra review 2026-11-02). That closes the ABCI connection and Tendermint stops at the next commit, while the BigchainDB
+  process stays up and accepts new connections, so a process check stays green: monitor block height too. Over the HTTP API nothing changes: the web
   process validates first and answers 500 as before. Code 2 is visible on Tendermint's RPC only;
   BigchainDB's HTTP API turns every non-zero code into 500 `Transaction validation failed`.
+- `bigchaindb/core.py`, `common/transaction.py` `has_unstorable_value`: CheckTx rejects (code 1) integers outside int64 and
+  nesting deeper than 100 levels, which MongoDB cannot store or which come close to its 180-level limit. Prod accepts them
+  and every validator stops at Commit (#12). **CheckTx only, not a consensus change:** DeliverTx still accepts them, so a
+  block holding one, from an old node or a byzantine proposer, stops a fork node as before. Over HTTP the web process does
+  not run this check: `mode=commit` and `mode=sync` answer 500 `Transaction validation failed`, while `mode=async` (the
+  default) answers 202 and the transaction is dropped.
+- `bigchaindb/start.py`, `bigchaindb-abci/abci/server.py`: the ABCI server listens on `abci.host`, default `127.0.0.1`
+  (`BIGCHAINDB_ABCI_HOST`); prod listens on every interface. Set it to `0.0.0.0` only when Tendermint runs on another host,
+  as the Docker harness does. `bigchaindb/k8s/` and `bigchaindb/pkg/` are upstream's and were not updated.
+- `bigchaindb/web/views/info.py`: the API's docs links point at upstream's `latest` pages. Its versioned pages return 404.
 - `cryptoconditions/fulfillment.py`: a `RecursionError` from pyasn1 while decoding a fulfillment
   (a `'0' * 64` condition) is an `ASN1DecodeError`, so BigchainDB rejects the
   transaction as `InvalidSignature` (code 1; HTTP 400 instead of prod's 500).
@@ -78,7 +91,7 @@ Code:
 - `bigchaindb/config_utils.py`, `bigchaindb/setup.py`: `importlib.metadata` instead of `pkg_resources`.
 - `cryptoconditions/crypto.py`: `== 'bytes'` instead of `is 'bytes'`.
 - `install_requires` in the three `setup.py` files: the exact versions of `requirements-py312.txt`
-  (BigchainDB `python_requires >= 3.12`).
+  (all three `python_requires >= 3.12`).
 - Tests adjusted for the new libraries, plus regression tests. `tests/conftest.py` starts the
   ABCI server for the `abci` tests with a `BigchainDB` whose validation raises on demand (flag
   file), and `scripts/test-in-docker.sh` sets the genesis block `max_bytes` to 64 kB, both for
@@ -98,18 +111,19 @@ make image-new             # bdb-new-env:arm64 (ARCH=amd64 for amd64)
 make test                  # fork test suites in Docker (ARCH=arm64 by default)
 make bundle test-install   # release bundle for Ubuntu 24.04 / Python 3.12 / amd64, then install.sh in a blank container
 make test-bundle           # fork test suites against the venv install.sh builds from that bundle (amd64; what CI runs)
-make lock                  # rewrite the PyPI hashes in requirements-py312.txt after changing a version
+make lock                  # rewrite the PyPI hashes in both requirements files after changing a version
 make image-old test-old    # prod's exact stack (amd64, emulated on Apple silicon) and upstream's suites
 make diff                  # old stack vs fork: transaction corpus, HTTP API, websocket events
 ```
 
-`requirements-py312.txt` pins every dependency of the tested set (61 packages, 0 known advisories
-in the 2026-10-27 pip-audit scan) with the sha256 of every PyPI file Python 3.12 can install, so pip
-runs in hash-checking mode wherever the file is used. Output goes to `test-results/` (git-excluded).
+`requirements-py312.txt` pins every runtime dependency (51 packages) and `requirements-py312-test.txt`
+the test tools (10 packages, never in the release bundle). 0 known advisories in the 2026-10-27
+pip-audit scan of the two together. Both carry the sha256 of every PyPI file Python 3.12 can install, so pip
+runs in hash-checking mode wherever they are used. Output goes to `test-results/` (git-excluded).
 
 ### Expected test results
 
-`make test`: non-abci 438 passed, 3 failed, 3 skipped; abci 104 passed. The failures are known and
+`make test`: non-abci 451 passed, 3 failed, 3 skipped; abci 105 passed. The failures are known and
 the same on prod's stack (`test_text_search` ×2 and `test_docs`: environment only). They are listed
 in `scripts/known-failures-<suite>.txt`; `make test` fails on any other failure and reports known
 failures that start passing. `K=<expression>` narrows a run (`K=test_check_tx scripts/test-in-docker.sh arm64 abci`);
@@ -137,9 +151,10 @@ prepares the user and the apt package and calls `install.sh` as one step.
 `scripts/bundle/test-install.sh <bundle>` (`make test-install`) rehearses that in a blank
 `ubuntu:24.04` container with the network namespace removed.
 
-`.github/workflows/release.yml` runs `make test ARCH=amd64`, builds the bundle, runs the install
-test and uploads the bundle as a workflow artifact on every push and pull request; a tag `v*`
-also gets a GitHub release with the bundle attached.
+`.github/workflows/release.yml` builds the bundle, runs `make test-bundle` (the test tools are added on
+top of the installed bundle in the test container only), runs the install test and uploads the bundle as a
+workflow artifact on every push and pull request; a tag `v*` also gets a GitHub release with the bundle
+attached and `RELEASE_NOTES.md` as its notes, so update that file in the version bump.
 
 ## Local folders (git-excluded)
 

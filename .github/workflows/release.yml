@@ -58,6 +58,7 @@ jobs:
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
           name: bigchaindb-node-bundle
@@ -65,4 +66,4 @@ jobs:
       - name: Release assets
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" --title "${GITHUB_REF_NAME}" --notes "See README.md, Changes against prod." dist/*.tar.gz dist/*.sha256
+        run: gh release create "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" --title "${GITHUB_REF_NAME}" --notes-file RELEASE_NOTES.md dist/*.tar.gz dist/*.sha256
