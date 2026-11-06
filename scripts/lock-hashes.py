@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Adds pip --hash lines to every pin in requirements-py312.txt from PyPI's file digests.
+"""Adds pip --hash lines to every pin in the two requirements files from PyPI's file digests.
 
 Keeps the pinned versions as they are; only the hashes are (re)written. Every sdist and every wheel a
 CPython 3.12 interpreter on any platform can install is hashed, so the same file serves the amd64 bundle
@@ -11,7 +11,8 @@ import sys
 import urllib.request
 from pathlib import Path
 
-REQUIREMENTS = Path(__file__).resolve().parent.parent / 'requirements-py312.txt'
+ROOT = Path(__file__).resolve().parent.parent
+REQUIREMENTS = [ROOT / 'requirements-py312.txt', ROOT / 'requirements-py312-test.txt']
 PIN = re.compile(r'^([A-Za-z0-9_.-]+)==([^\s\\;]+)')
 
 
@@ -49,15 +50,20 @@ def load_hashes(name, version):
     return hashes
 
 
-def main():
+def write_hashes(requirements):
     lines = []
-    for name, version in read_pins(REQUIREMENTS.read_text()):
+    for name, version in read_pins(requirements.read_text()):
         hashes = load_hashes(name, version)
         lines.append(f'{name}=={version} \\')
         lines.extend(f'    --hash=sha256:{digest}' + (' \\' if index < len(hashes) - 1 else '')
                      for index, digest in enumerate(hashes))
         print(f'{name}=={version}: {len(hashes)} files', file=sys.stderr)
-    REQUIREMENTS.write_text('\n'.join(lines) + '\n')
+    requirements.write_text('\n'.join(lines) + '\n')
+
+
+def main():
+    for requirements in REQUIREMENTS:
+        write_hashes(requirements)
 
 
 if __name__ == '__main__':

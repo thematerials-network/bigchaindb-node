@@ -63,12 +63,16 @@ docker run --name "$prefix-tests" --network "$network" --network-alias bigchaind
       mkdir /tmp/bundle && tar -C /tmp/bundle --strip-components=1 -xzf /bundle.tar.gz
       /tmp/bundle/install.sh /opt/venv
       export PATH=/opt/venv/bin:$PATH
+      # The bundle holds no test tools; they go on top in this container only.
+      pip install -q --disable-pip-version-check --require-hashes --no-deps -r /src/requirements-py312-test.txt
+      pip check
       # Only the tests and pytest.ini: with the source package beside them, pytest would import it instead of the venv.
       mkdir /tmp/suite && cp -a /src/bigchaindb/tests /src/bigchaindb/pytest.ini /tmp/suite/ && cd /tmp/suite
     else
       cp -a /src/bigchaindb /src/cryptoconditions /src/bigchaindb-abci /src/requirements-py312.txt /tmp/
       cd /tmp
       /src/scripts/install-requirements.sh pip requirements-py312.txt -q --root-user-action=ignore --disable-pip-version-check
+      pip install -q --root-user-action=ignore --disable-pip-version-check --require-hashes --no-deps -r /src/requirements-py312-test.txt
       pip install -q --root-user-action=ignore --disable-pip-version-check --no-deps --no-build-isolation \
         ./cryptoconditions ./bigchaindb-abci ./bigchaindb
       cd /tmp/bigchaindb

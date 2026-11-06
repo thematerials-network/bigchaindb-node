@@ -8,12 +8,13 @@ VENV ?= .venv
 help:
 	@grep -E '^[a-z0-9-]+:.*## ' $(MAKEFILE_LIST) | sed -E 's/:.*## /\t/' | expand -t 18
 
-venv: ## Local Python 3.12 venv with the pinned dependencies and the three packages (editable)
+venv: ## Local Python 3.12 venv with the pinned dependencies, test tools and the three packages (editable)
 	$(PYTHON) -m venv $(VENV)
 	scripts/install-requirements.sh $(VENV)/bin/pip requirements-py312.txt -q
+	$(VENV)/bin/pip install -q --require-hashes --no-deps -r requirements-py312-test.txt
 	$(VENV)/bin/pip install -q --no-deps --no-build-isolation -e ./cryptoconditions -e ./bigchaindb-abci -e ./bigchaindb
 
-lock: ## Rewrite the PyPI hashes in requirements-py312.txt for its pinned versions (needs network)
+lock: ## Rewrite the PyPI hashes in both requirements files for their pinned versions (needs network)
 	scripts/lock-hashes.py
 
 # Built from a copy: setuptools rewrites the committed sdist egg-info files in place.
@@ -37,8 +38,8 @@ test-bundle: ## Fork test suites against the venv install.sh builds from the new
 
 images: image-new image-old image-iproute2 ## Build every Docker image the test harness uses
 
-image-new: ## bdb-new-env:$(ARCH): the fork's dependencies on Python 3.12
-	cp requirements-py312.txt scripts/install-requirements.sh scripts/new-env/
+image-new: ## bdb-new-env:$(ARCH): the fork's dependencies and test tools on Python 3.12
+	cp requirements-py312.txt requirements-py312-test.txt scripts/install-requirements.sh scripts/new-env/
 	docker build -q --platform linux/$(ARCH) -t bdb-new-env:$(ARCH) scripts/new-env
 
 image-old: ## bdb-old-env:amd64: prod's exact stack (Python 3.9.25, prod freeze), ~10 min
