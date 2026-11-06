@@ -12,18 +12,17 @@ from bigchaindb.web.views.base import base_ws_uri
 from bigchaindb import version
 from bigchaindb.web.websocket_server import EVENTS_ENDPOINT
 
+# Upstream's versioned docs pages return 404 (v2.1.0 to v2.2.2, checked 2026-11-06); only latest is served.
+DOCS_URL = 'https://docs.bigchaindb.com/projects/server/en/latest/'
+
 
 class RootIndex(Resource):
     def get(self):
-        docs_url = [
-            'https://docs.bigchaindb.com/projects/server/en/v',
-            version.__version__ + '/'
-        ]
         return flask.jsonify({
             'api': {
                 'v1': get_api_v1_info('/api/v1/')
             },
-            'docs': ''.join(docs_url),
+            'docs': DOCS_URL,
             'software': 'BigchainDB',
             'version': version.__version__,
         })
@@ -39,14 +38,8 @@ def get_api_v1_info(api_prefix):
     api.
     """
     websocket_root = base_ws_uri() + EVENTS_ENDPOINT
-    docs_url = [
-        'https://docs.bigchaindb.com/projects/server/en/v',
-        version.__version__,
-        '/http-client-server-api.html',
-    ]
-
     return {
-        'docs': ''.join(docs_url),
+        'docs': DOCS_URL + 'http-client-server-api.html',
         'transactions': '{}transactions/'.format(api_prefix),
         'blocks': '{}blocks/'.format(api_prefix),
         'assets': '{}assets/'.format(api_prefix),
