@@ -69,20 +69,14 @@ def start(args):
 
     # Start the ABCIServer
     abci = ABCI(TmVersion(bigchaindb.config['tendermint']['version']))
-    if args.experimental_parallel_validation:
-        app = ABCIServer(
-            app=ParallelValidationApp(
-                abci=abci.types,
-                events_queue=exchange.get_publisher_queue(),
-            )
-        )
-    else:
-        app = ABCIServer(
-            app=App(
-                abci=abci.types,
-                events_queue=exchange.get_publisher_queue(),
-            )
-        )
+    app_class = ParallelValidationApp if args.experimental_parallel_validation else App
+    app = ABCIServer(
+        app=app_class(
+            abci=abci.types,
+            events_queue=exchange.get_publisher_queue(),
+        ),
+        host=bigchaindb.config['abci']['host'],
+    )
     app.run()
 
 

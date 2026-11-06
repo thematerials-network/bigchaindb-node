@@ -39,6 +39,7 @@ services:
       BIGCHAINDB_WSSERVER_ADVERTISED_HOST: bigchaindb
       BIGCHAINDB_TENDERMINT_HOST: tendermint
       BIGCHAINDB_TENDERMINT_PORT: 26657
+      BIGCHAINDB_ABCI_HOST: 0.0.0.0
     ports:
       - "9984:9984"
       - "9985:9985"

@@ -71,7 +71,7 @@ docker run -d --name "$prefix-mongodb" --network "$network" --network-alias mong
 docker run -d --name "$prefix-bigchaindb" --network "$network" --network-alias bigchaindb --platform "linux/$arch" \
   -v "$root:/src:ro" \
   -e BIGCHAINDB_DATABASE_BACKEND=localmongodb -e BIGCHAINDB_DATABASE_HOST=mongodb -e BIGCHAINDB_DATABASE_PORT=27017 \
-  -e BIGCHAINDB_TENDERMINT_HOST=tendermint -e BIGCHAINDB_TENDERMINT_PORT=26657 \
+  -e BIGCHAINDB_TENDERMINT_HOST=tendermint -e BIGCHAINDB_TENDERMINT_PORT=26657 -e BIGCHAINDB_ABCI_HOST=0.0.0.0 \
   -e BIGCHAINDB_SERVER_BIND=0.0.0.0:9984 -e BIGCHAINDB_WSSERVER_HOST=0.0.0.0 \
   "$image" bash -c "$setup && cd / && bigchaindb -y configure && exec bigchaindb -l INFO start" >/dev/null
 wait_for_port "$prefix-bigchaindb" 26658
