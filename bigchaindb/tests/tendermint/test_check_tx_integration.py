@@ -14,24 +14,11 @@ import pytest
 import requests
 
 from bigchaindb.core import CodeTypeOk, CodeTypeError, CodeTypeInternalError
-from tests.tendermint.test_core import (malformed_fulfillment_tx_bytes, rapidjson_rejected_tx_bytes,
-                                        RAPIDJSON_ONLY_REJECTS, UNDECODABLE_INPUTS)
+from tests.tendermint.test_core import (malformed_fulfillment_tx_bytes, nested_metadata, rapidjson_rejected_tx_bytes,
+                                        signed_create, tx_bytes, RAPIDJSON_ONLY_REJECTS, CHECK_TX_UNDECODABLE_INPUTS)
 
 # Not `bdb`: its per-test flush empties `blocks`, which the running ABCI server reads in EndBlock.
 pytestmark = pytest.mark.abci
-
-
-def signed_create(metadata=None):
-    from bigchaindb.models import Transaction
-    from bigchaindb.common.crypto import generate_key_pair
-
-    alice = generate_key_pair()
-    return Transaction.create([alice.public_key], [([alice.public_key], 1)], metadata=metadata)\
-                      .sign([alice.private_key])
-
-
-def tx_bytes(tx):
-    return json.dumps(tx.to_dict()).encode('utf8')
 
 
 def broadcast(b, raw, method='broadcast_tx_sync'):
@@ -115,7 +102,7 @@ def test_d_malformed_inputs_are_rejected_and_valid_ones_still_commit(b):
     assert broadcast_code(b, malformed_fulfillment_tx_bytes()) == CodeTypeError
     for field, value in RAPIDJSON_ONLY_REJECTS:
         assert broadcast_code(b, rapidjson_rejected_tx_bytes(field, value)) == CodeTypeError
-    for param in UNDECODABLE_INPUTS:
+    for param in CHECK_TX_UNDECODABLE_INPUTS:
         assert broadcast_code(b, param.values[0]) == CodeTypeInternalError, param.id
     assert broadcast_code(b, bad_output_index_tx_bytes(b)) in (CodeTypeError, CodeTypeInternalError)
     valid = signed_create()
@@ -124,3 +111,15 @@ def test_d_malformed_inputs_are_rejected_and_valid_ones_still_commit(b):
     wrong_signature = signed_create().to_dict()
     wrong_signature['inputs'][0]['fulfillment'] = signed_create().to_dict()['inputs'][0]['fulfillment']
     assert broadcast_code(b, json.dumps(wrong_signature).encode('utf8')) == CodeTypeError
+
+
+def test_e_unstorable_values_never_reach_a_block_and_valid_ones_still_commit(b):
+    unstorable = [signed_create({'value': 2 ** 63}), signed_create(nested_metadata(101))]
+    for tx in unstorable:
+        assert broadcast_code(b, tx_bytes(tx)) == CodeTypeError
+
+    valid = signed_create()
+    assert broadcast_code(b, tx_bytes(valid)) == CodeTypeOk
+    wait_committed(b, valid.id)
+    wait_mempool_empty(b)
+    assert all(b.get_transaction(tx.id) is None for tx in unstorable)

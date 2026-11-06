@@ -97,7 +97,7 @@ class ProtocolHandler:
 
 
 class ABCIServer:
-    def __init__(self, port=26658, app=None):
+    def __init__(self, port=26658, app=None, host='0.0.0.0'):
         if not app or not isinstance(app, BaseApplication):
             log.error(
                 "Application missing or not an instance of Base Application")
@@ -107,7 +107,7 @@ class ABCIServer:
         self.port = port
         self.protocol = ProtocolHandler(app)
         self.server = StreamServer(
-            ('0.0.0.0', port), handle=self.__handle_connection)
+            (host, port), handle=self.__handle_connection)
 
     def start(self):
         self.server.start()

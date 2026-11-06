@@ -373,6 +373,24 @@ logging of the `core.py` module to be more verbose, you would set the
 {}
 ```
 
+## abci.host
+
+The address the ABCI server listens on for Tendermint. Keep the default when Tendermint runs on the same host.
+
+**Example using an environment variable**
+
+```text
+export BIGCHAINDB_ABCI_HOST=0.0.0.0
+```
+
+**Default value**
+
+```js
+"abci": {
+    "host": "127.0.0.1"
+}
+```
+
 ## tendermint.*
 
 The settings with names of the form `tendermint.*` tell BigchainDB Server

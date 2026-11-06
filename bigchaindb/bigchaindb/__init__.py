@@ -73,6 +73,9 @@ config = {
         'port': 26657,
         'version': 'v0.31.5',  # look for __tm_supported_versions__
     },
+    'abci': {
+        'host': '127.0.0.1',  # Tendermint connects from the same host
+    },
     # FIXME: hardcoding to localmongodb for now
     'database': _database_map['localmongodb'],
     'log': {

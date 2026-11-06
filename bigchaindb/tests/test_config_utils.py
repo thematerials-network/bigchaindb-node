@@ -223,6 +223,9 @@ def test_autoconfigure_read_both_from_file_and_env(monkeypatch, request):
             'port': 26657,
             'version': 'v0.31.5'
         },
+        'abci': {
+            'host': '127.0.0.1',
+        },
         'log': {
             'file': LOG_FILE,
             'level_console': 'debug',

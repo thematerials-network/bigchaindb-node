@@ -372,18 +372,20 @@ def test_deliver_tx__raw_driver_error_from_a_cursor_propagates(a, b, init_chain_
 
 
 # Finding E: inputs no layer rejects; they raised through CheckTx and DeliverTx and killed the ABCI connection.
-UNDECODABLE_INPUTS = [
+NESTING_2000 = b'{"a":' * 2000 + b'1' + b'}' * 2000
+CHECK_TX_UNDECODABLE_INPUTS = [
     pytest.param(b'not json', id='not-json'),
     pytest.param(b'', id='empty'),
     pytest.param(b'\xff\xfe', id='invalid-utf8'),
     pytest.param(b'[]', id='json-array'),
     pytest.param(b'"a string"', id='json-string'),
     pytest.param(b'"\\ud800"', id='lone-surrogate'),
-    pytest.param(b'{"a":' * 2000 + b'1' + b'}' * 2000, id='nesting-2000'),
 ]
+# CheckTx rejects nesting 2000 earlier, as too deep to store.
+UNDECODABLE_INPUTS = [*CHECK_TX_UNDECODABLE_INPUTS, pytest.param(NESTING_2000, id='nesting-2000')]
 
 
-@pytest.mark.parametrize('raw', UNDECODABLE_INPUTS)
+@pytest.mark.parametrize('raw', CHECK_TX_UNDECODABLE_INPUTS)
 def test_check_tx__undecodable_input_is_internal_error(a, b, raw, mocker):
     app = App(a, b)
     log_exception = mocker.patch('bigchaindb.core.logger.exception')
@@ -397,6 +399,66 @@ def test_deliver_tx__undecodable_input_is_internal_error(a, b, raw):
     app.begin_block(a.RequestBeginBlock())
     assert app.deliver_tx(raw).code == CodeTypeInternalError
     assert app.block_txn_ids == []
+
+
+def nested_metadata(transaction_depth):
+    """Metadata that makes the transaction exactly transaction_depth levels deep."""
+    metadata = {'leaf': 1}
+    for _ in range(transaction_depth - 2):
+        metadata = {'nested': metadata}
+    return metadata
+
+
+def signed_create(metadata=None):
+    from bigchaindb.models import Transaction
+    from bigchaindb.common.crypto import generate_key_pair
+
+    alice = generate_key_pair()
+    return Transaction.create([alice.public_key], [([alice.public_key], 1)], metadata=metadata)\
+                      .sign([alice.private_key])
+
+
+def tx_bytes(tx):
+    return json.dumps(tx.to_dict()).encode('utf8')
+
+
+# Finding A (#12): valid transactions MongoDB cannot store; once in a block they stop every validator at Commit.
+UNSTORABLE_METADATA = [
+    pytest.param({'value': 2 ** 63}, id='int-above-int64'),
+    pytest.param({'value': -(2 ** 63) - 1}, id='int-below-int64'),
+    pytest.param({'values': [{'value': 2 ** 63}]}, id='int-above-int64-in-list'),
+    pytest.param(nested_metadata(101), id='depth-101'),
+]
+STORABLE_METADATA = [
+    pytest.param({'value': 2 ** 63 - 1}, id='int64-max'),
+    pytest.param({'value': -(2 ** 63)}, id='int64-min'),
+    pytest.param(nested_metadata(100), id='depth-100'),
+]
+
+
+@pytest.mark.parametrize('metadata', UNSTORABLE_METADATA)
+def test_check_tx__unstorable_value_is_error(a, b, metadata, mocker):
+    log_exception = mocker.patch('bigchaindb.core.logger.exception')
+    assert App(a, b).check_tx(tx_bytes(signed_create(metadata))).code == CodeTypeError
+    log_exception.assert_not_called()
+
+
+def test_check_tx__nesting_2000_is_error(a, b):
+    assert App(a, b).check_tx(NESTING_2000).code == CodeTypeError
+
+
+@pytest.mark.parametrize('metadata', STORABLE_METADATA)
+def test_check_tx__storable_value_at_the_limit_is_ok(a, b, metadata):
+    assert App(a, b).check_tx(tx_bytes(signed_create(metadata))).code == CodeTypeOk
+
+
+# CheckTx only: which blocks are valid must not change, so DeliverTx keeps accepting these.
+@pytest.mark.parametrize('metadata', UNSTORABLE_METADATA)
+def test_deliver_tx__unstorable_value_is_still_accepted(a, b, init_chain_request, metadata):
+    app = App(a, b)
+    app.init_chain(init_chain_request)
+    app.begin_block(a.RequestBeginBlock())
+    assert app.deliver_tx(tx_bytes(signed_create(metadata))).code == CodeTypeOk
 
 
 def test_check_tx__bad_output_index_is_error(a, b, init_chain_request):

@@ -38,6 +38,9 @@ docker run --rm --platform linux/amd64 --network none -v "$bundle:/bundle.tar.gz
   owner=$(stat -c %U:%G /home/bigchaindb/venv)
   echo "--- owner: $owner, $(/home/bigchaindb/venv/bin/python --version)"
   [[ $owner == bigchaindb:bigchaindb ]] || { echo "FAIL: venv owned by $owner, not bigchaindb" >&2; exit 1; }
+  test_tools=$(/home/bigchaindb/venv/bin/pip list --format=freeze | grep -i -E "^(hypothesis|iniconfig|pluggy|pygments|pytest|sortedcontainers)" || true)
+  [[ -z $test_tools ]] || { echo "$test_tools"; echo "FAIL: test tools in the installed venv" >&2; exit 1; }
+  echo "--- no test tools in the venv"
   echo "--- bigchaindb start as user bigchaindb (no MongoDB here: must fail to connect, not to import)"
   output=$(su bigchaindb -c "cd && /home/bigchaindb/venv/bin/bigchaindb -y configure localmongodb >/dev/null && timeout 20 /home/bigchaindb/venv/bin/bigchaindb start" 2>&1 || true)
   echo "$output" | tail -3

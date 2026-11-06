@@ -6,4 +6,5 @@ __pycache__/
 test-results/
 dist/
 scripts/new-env/requirements-py312.txt
+scripts/new-env/requirements-py312-test.txt
 scripts/new-env/install-requirements.sh
