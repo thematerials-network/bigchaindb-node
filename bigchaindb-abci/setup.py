@@ -24,9 +24,7 @@ setup(
         'Development Status :: 3 - Alpha',
         'Intended Audience :: Developers',
         'License :: OSI Approved :: Apache Software License',
-        'Programming Language :: Python :: 3.6',
-        'Programming Language :: Python :: 3.7',
-        'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.12',
     ],
     keywords='blockchain tendermint abci',
     packages=find_packages(exclude=['tests']),
@@ -40,5 +38,5 @@ setup(
         "pytest-pythonpath==0.7.3",
         "pytest-cov==2.8.1"
     ],
-    python_requires='>=3.6',
+    python_requires='>=3.12',
 )
