@@ -49,6 +49,11 @@ UnspentOutput = namedtuple(
     )
 )
 
+# BSON integers are int64. MongoDB refuses more than 180 levels; 100 is the limit decided for these checks.
+MAX_STORABLE_INT = 2 ** 63 - 1
+MIN_STORABLE_INT = -(2 ** 63)
+MAX_STORABLE_DEPTH = 100
+
 
 class Input(object):
     """A Input is used to spend assets locked by an Output.
@@ -497,6 +502,25 @@ def has_subnormal_float(value):
             pending.extend(item.values())
         elif isinstance(item, list):
             pending.extend(item)
+    return False
+
+
+def has_unstorable_value(value):
+    """True if MongoDB could not store the JSON-like value: an integer outside int64, or nesting beyond the limit.
+
+    For CheckTx only: applying this in validation would change which blocks are valid.
+    """
+    pending = [(value, 1)]
+    while pending:
+        item, depth = pending.pop()
+        if isinstance(item, int):
+            if not MIN_STORABLE_INT <= item <= MAX_STORABLE_INT:
+                return True
+        elif isinstance(item, (dict, list)):
+            if depth > MAX_STORABLE_DEPTH:
+                return True
+            children = item.values() if isinstance(item, dict) else item
+            pending.extend((child, depth + 1) for child in children)
     return False
 
 

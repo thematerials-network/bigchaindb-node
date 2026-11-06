@@ -16,6 +16,7 @@ from abci import CodeTypeOk
 
 from bigchaindb import BigchainDB
 from bigchaindb.backend.exceptions import BackendError
+from bigchaindb.common.transaction import has_unstorable_value
 from bigchaindb.elections.election import Election
 from bigchaindb.version import __tm_supported_versions__
 from bigchaindb.utils import tendermint_version_is_compatible
@@ -150,6 +151,10 @@ class App(BaseApplication):
         transaction = None
         try:
             transaction = decode_transaction(raw_transaction)
+            # Not in validation: DeliverTx must keep accepting what old validators accept.
+            if has_unstorable_value(transaction):
+                logger.warning('check_tx: rejected, holds an integer or nesting that MongoDB cannot store')
+                return self.abci.ResponseCheckTx(code=CodeTypeError)
             valid = self.bigchaindb.is_valid_transaction(transaction)
         except Exception:
             self.log_unexpected_error('check_tx', transaction)
