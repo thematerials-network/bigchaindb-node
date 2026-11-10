@@ -1,0 +1,51 @@
+# Checks the pinned runtime dependencies (requirements-py312.txt, what the bundle installs) against known
+# vulnerabilities. Weekly and on demand, findings open one issue (or comment on the open one); on a pull request
+# that changes the pins, findings fail the check.
+name: pip-audit
+
+on:
+  schedule:
+    - cron: '17 6 * * 1'
+  workflow_dispatch:
+  pull_request:
+    paths: [requirements-py312.txt]
+
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Audit requirements-py312.txt
+        id: audit
+        run: |
+          set +e
+          pipx run pip-audit==2.10.1 -r requirements-py312.txt --no-deps --disable-pip --strict --desc -f markdown -o report.md
+          rc=$?
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
+          # pip-audit writes no report when it finds nothing or fails early.
+          if [[ ! -f report.md ]]; then
+            if [[ $rc == 0 ]]; then echo 'No known vulnerabilities.' > report.md; else echo 'pip-audit failed before writing a report; see the run log.' > report.md; fi
+          fi
+          cat report.md
+
+      - name: Open or update the issue
+        if: steps.audit.outputs.rc != '0' && github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TITLE: 'pip-audit: vulnerable dependencies in requirements-py312.txt'
+        run: |
+          body="$(printf 'Weekly pip-audit run %s\n\n%s\n' "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" "$(cat report.md)")"
+          open=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --search "\"$TITLE\" in:title" --json number --jq '.[0].number')
+          if [[ -n "$open" ]]; then
+            gh issue comment "$open" --repo "$GITHUB_REPOSITORY" --body "$body"
+          else
+            gh issue create --repo "$GITHUB_REPOSITORY" --title "$TITLE" --label dependencies --body "$body"
+          fi
+
+      - name: Fail on findings
+        if: steps.audit.outputs.rc != '0'
+        run: exit 1
