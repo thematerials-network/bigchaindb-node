@@ -3,7 +3,7 @@ ARCH ?= arm64
 PYTHON ?= python3.12
 VENV ?= .venv
 
-.PHONY: help venv lock wheels bundle test-install test-bundle images image-new image-old image-iproute2 test test-non-abci test-abci test-old diff diff-corpus diff-http diff-ws pb2 clean
+.PHONY: help venv lock bump wheels bundle test-install test-bundle images image-new image-old image-iproute2 test test-non-abci test-abci test-old diff diff-corpus diff-http diff-ws pb2 clean
 
 help:
 	@grep -E '^[a-z0-9-]+:.*## ' $(MAKEFILE_LIST) | sed -E 's/:.*## /\t/' | expand -t 18
@@ -15,6 +15,11 @@ venv: ## Local Python 3.12 venv with the pinned dependencies, test tools and the
 	$(VENV)/bin/pip install -q --no-deps --no-build-isolation -e ./cryptoconditions -e ./bigchaindb-abci -e ./bigchaindb
 
 lock: ## Rewrite the PyPI hashes in both requirements files for their pinned versions (needs network)
+	scripts/lock-hashes.py
+
+bump: ## Pin PKG at VERSION and rewrite the hashes; push as a PR and CI tests the bundle (needs network)
+	@test -n "$(PKG)" -a -n "$(VERSION)" || { echo 'usage: make bump PKG=<package> VERSION=<version>'; exit 2; }
+	scripts/bump-pin.py "$(PKG)" "$(VERSION)"
 	scripts/lock-hashes.py
 
 # Built from a copy: setuptools rewrites the committed sdist egg-info files in place.
