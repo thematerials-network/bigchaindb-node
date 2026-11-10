@@ -112,6 +112,7 @@ make test                  # fork test suites in Docker (ARCH=arm64 by default)
 make bundle test-install   # release bundle for Ubuntu 24.04 / Python 3.12 / amd64, then install.sh in a blank container
 make test-bundle           # fork test suites against the venv install.sh builds from that bundle (amd64; what CI runs)
 make lock                  # rewrite the PyPI hashes in both requirements files after changing a version
+make bump PKG=x VERSION=y  # pin one package at a new version and rewrite the hashes; CI tests the bundle on the PR
 make image-old test-old    # prod's exact stack (amd64, emulated on Apple silicon) and upstream's suites
 make diff                  # old stack vs fork: transaction corpus, HTTP API, websocket events
 ```
