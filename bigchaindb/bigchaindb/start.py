@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 BANNER = """
 ****************************************************************************
 *                                                                          *
-*                             BigchainDB 2.2.3                             *
+*                             BigchainDB 2.2.4                             *
 *   codename "jumping sloth"                                               *
 *   Initialization complete. BigchainDB Server is ready and waiting.       *
 *                                                                          *
