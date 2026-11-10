@@ -117,9 +117,9 @@ make image-old test-old    # prod's exact stack (amd64, emulated on Apple silico
 make diff                  # old stack vs fork: transaction corpus, HTTP API, websocket events
 ```
 
-`requirements-py312.txt` pins every runtime dependency (51 packages) and `requirements-py312-test.txt`
-the test tools (10 packages, never in the release bundle). 0 known advisories in the 2026-10-27
-pip-audit scan of the two together. Both carry the sha256 of every PyPI file Python 3.12 can install, so pip
+`requirements-py312.txt` pins every runtime dependency (52 packages) and `requirements-py312-test.txt`
+the test tools (10 packages, never in the release bundle). The runtime pins are pip-audited weekly in CI
+(`.github/workflows/pip-audit.yml`); 0 known advisories on 2026-11-10. Both carry the sha256 of every PyPI file Python 3.12 can install, so pip
 runs in hash-checking mode wherever they are used. Output goes to `test-results/` (git-excluded).
 
 ### Expected test results
