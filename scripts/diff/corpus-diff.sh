@@ -9,7 +9,7 @@ run=$root/scripts/diff/run-in-env.sh
 out=$root/test-results/diff
 network=bdb-diff-$arch-net
 cleanup() {
-  docker rm -f "bdb-diff-$arch-mongodb" >/dev/null 2>&1 || true
+  docker rm -fv "bdb-diff-$arch-mongodb" >/dev/null 2>&1 || true
   docker network rm "$network" >/dev/null 2>&1 || true
 }
 trap cleanup EXIT

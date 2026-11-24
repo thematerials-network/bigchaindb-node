@@ -25,7 +25,7 @@ fi
 
 cleanup() {
   docker logs "$prefix-tendermint" > "$results/$prefix-tendermint.log" 2>&1 || true
-  docker rm -f "$prefix-tests" "$prefix-mongodb" "$prefix-tendermint" >/dev/null 2>&1 || true
+  docker rm -fv "$prefix-tests" "$prefix-mongodb" "$prefix-tendermint" >/dev/null 2>&1 || true
   docker network rm "$network" >/dev/null 2>&1 || true
 }
 trap cleanup EXIT

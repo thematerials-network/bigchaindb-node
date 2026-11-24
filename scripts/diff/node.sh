@@ -19,7 +19,7 @@ case $env-$arch in
 esac
 
 down() {
-  docker rm -f "$prefix-bigchaindb" "$prefix-tendermint" "$prefix-mongodb" >/dev/null 2>&1 || true
+  docker rm -fv "$prefix-bigchaindb" "$prefix-tendermint" "$prefix-mongodb" >/dev/null 2>&1 || true
   docker network rm "$network" >/dev/null 2>&1 || true
 }
 
