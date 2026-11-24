@@ -20,7 +20,7 @@ source_height=291054
 containers=("$prefix-tendermint" "$prefix-bigchaindb" "$prefix-mongodb" "$prefix-source" "$prefix-source-app")
 volumes=("$prefix-mongo" "$prefix-tm" "$prefix-source-tm")
 
-remove_containers() { docker rm -f "${containers[@]}" >/dev/null 2>&1 || true; }
+remove_containers() { docker rm -fv "${containers[@]}" >/dev/null 2>&1 || true; }
 case $action in
   down) remove_containers; docker network rm "$network" >/dev/null 2>&1 || true; exit 0 ;;
   purge) remove_containers; docker network rm "$network" >/dev/null 2>&1 || true
